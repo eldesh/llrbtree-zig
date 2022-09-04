@@ -3,5 +3,7 @@ name: rbtree-zig
 main: src/main.zig
 license: BSD-2-Clause
 description: A Red-Black tree implementation
+root_dependencies:
+  - src: git git@github.com:eldesh/basis_concept-zig
 dependencies:
   - src: git git@github.com:eldesh/basis_concept-zig
