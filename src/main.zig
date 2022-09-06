@@ -117,7 +117,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
                     var vnode = node;
                     if (isRed(node.rnode) and !isRed(node.lnode))
                         vnode = vnode.rotate_left();
-                    if (isRed(node.lnode) and node.lnode != null and isRed(node.lnode.?.lnode))
+                    if (isRed(node.lnode) and isRed(node.lnode.?.lnode))
                         vnode = vnode.rotate_right();
                     return vnode;
                 } else {
