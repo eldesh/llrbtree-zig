@@ -125,7 +125,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 }
             }
 
-            // Checks if node `self` is not null and the value of the color field is equal to `.Red`.
+            // Checks if node `self` is not `null` and the value of the color field is equal to `.Red`.
             fn isRed(self: ?*Node) bool {
                 return if (self) |node| node.color == .Red else false;
             }
@@ -152,14 +152,41 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 return h;
             }
 
-            fn delete_node(self: *Node, value: *const T) *Node {
-                var h = self;
+            fn min(self: *Node) *Node {
+                var h: ?*Node = self;
+                while (h.?.lnode) |lnode| : (h = lnode) {}
+                return h.?;
+            }
+
+            fn delete_node(self: ?*Node, allocator: Allocator, value: *const T) ?*Node {
+                if (self == null) return null;
+                var h = self.?;
                 if (Con.PartialOrd.on(*const T)(value, &h.value).?.compare(math.CompareOperator.lt)) {
                     if (!isRed(h.lnode) and h.lnode != null and !isRed(h.lnode.?.lnode))
                         h = h.move_redleft();
-                    h.lnode = delete_node(h.lnode.?, value);
+                    h.lnode = delete_node(h.lnode, allocator, value);
                 } else {
-                    unreachable;
+                    if (isRed(h.lnode))
+                        h = h.rotate_right();
+                    if (Con.PartialOrd.on(*const T)(value, &h.value).?.compare(.eq) and h.rnode != null) {
+                        allocator.destroy(h.rnode.?);
+                        return null;
+                    }
+                    if (!isRed(h.rnode) and h.rnode != null and !isRed(h.rnode.?.lnode))
+                        h = h.move_redright();
+                    if (Con.PartialOrd.on(*const T)(value, &h.value).?.compare(.eq)) {
+                        if (h.rnode) |rnode| {
+                            const rm = rnode.min();
+                            h.value = rm.value;
+                            allocator.destroy(rm);
+                            h.rnode = delete_min_node(h.rnode, allocator);
+                        } else {
+                            allocator.destroy(h);
+                            return null;
+                        }
+                    } else {
+                        h.rnode = delete_node(h.rnode, allocator, value);
+                    }
                 }
                 return h.fixup();
             }
@@ -169,6 +196,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
                     return null;
 
                 if (self.?.lnode == null) {
+                    // std.debug.print("delete_min_node: {}\n", .{self.?.value});
                     allocator.destroy(self.?);
                     return null;
                 }
@@ -215,11 +243,9 @@ pub fn LLRBTreeSet(comptime T: type) type {
         }
 
         pub fn delete(self: *Self, value: *const T) void {
-            if (self.root) |root| {
-                self.root = root.delete_node(value);
-                if (self.root) |_|
-                    self.root.?.color = .Black;
-            }
+            self.root = Node.delete_node(self.root, self.allocator, value);
+            if (self.root) |sroot|
+                sroot.color = .Black;
         }
 
         pub fn delete_min(self: *Self) void {
@@ -242,16 +268,27 @@ test "LLRBTreeSet" {
         var tree = Tree.new(testing.allocator);
         defer tree.destroy();
         var i: u32 = 0;
+        while (i <= 10) : (i += 2)
+            try tree.insert(i);
+        i -= 1;
+        while (i > 2) : (i -= 2)
+            try tree.insert(i);
+
+        i = 0;
+        while (i <= 10) : (i += 1)
+            tree.delete_min();
+    }
+    {
+        var tree = Tree.new(testing.allocator);
+        defer tree.destroy();
+        var i: u32 = 0;
         while (i <= 5) : (i += 1)
             try tree.insert(i);
         while (i > 0) : (i -= 1)
             try tree.insert(i);
-
-        i = 0;
-        while (i < 10) : (i += 1)
-            tree.delete_min();
+        while (i <= 5) : (i += 1)
+            tree.delete(&i);
+        while (i > 0) : (i -= 1)
+            tree.delete(&i);
     }
-
-    // var val: u32 = 1;
-    // tree.delete_min(&val);
 }
