@@ -108,7 +108,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 if (self) |node| {
                     if (isRed(node.lnode) and isRed(node.rnode)) node.flip_color();
 
-                    switch (Con.PartialOrd.on(*const T)(&node.value, &t).?) {
+                    switch (Con.PartialOrd.on(*const T)(&t, &node.value).?) {
                         .lt => node.lnode = try insert_node(node.lnode, allocator, t),
                         .eq => node.value = t,
                         .gt => node.rnode = try insert_node(node.rnode, allocator, t),
