@@ -153,9 +153,9 @@ pub fn LLRBTreeSet(comptime T: type) type {
             }
 
             fn min(self: *Node) *Node {
-                var h: ?*Node = self;
-                while (h.?.lnode) |lnode| : (h = lnode) {}
-                return h.?;
+                var h: *Node = self;
+                while (h.lnode) |lnode| : (h = lnode) {}
+                return h;
             }
 
             fn delete_node(self: ?*Node, allocator: Allocator, value: *const T) ?*Node {
