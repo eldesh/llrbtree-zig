@@ -221,16 +221,16 @@ pub fn LLRBTreeSet(comptime T: type) type {
                     // to right leaning
                     h = h.rotate_right();
 
-                if (self.rnode == null) {
-                    std.debug.print("delete_max_node: {}\n", .{h.value});
-                    allocator.destroy(self);
+                if (h.rnode == null) {
+                    // std.debug.print("delete_max_node: {}\n", .{h.value});
+                    allocator.destroy(h);
                     return null;
                 }
 
                 if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
                     h = h.move_redright();
 
-                h.lnode = delete_max_node(h.lnode.?, allocator);
+                h.rnode = delete_max_node(h.rnode.?, allocator);
                 return h.fixup();
             }
         };
