@@ -213,6 +213,26 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 h.lnode = delete_min_node(h.lnode.?, allocator);
                 return h.fixup();
             }
+
+            fn delete_max_node(self: *Node, allocator: Allocator) ?*Node {
+                var h = self;
+
+                if (isRed(h.lnode))
+                    // to right leaning
+                    h = h.rotate_right();
+
+                if (self.rnode == null) {
+                    std.debug.print("delete_max_node: {}\n", .{h.value});
+                    allocator.destroy(self);
+                    return null;
+                }
+
+                if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
+                    h = h.move_redright();
+
+                h.lnode = delete_max_node(h.lnode.?, allocator);
+                return h.fixup();
+            }
         };
 
         pub fn new(allocator: Allocator) Self {
@@ -258,6 +278,13 @@ pub fn LLRBTreeSet(comptime T: type) type {
         pub fn delete_min(self: *Self) void {
             if (self.root) |root|
                 self.root = Node.delete_min_node(root, self.allocator);
+            if (self.root) |root|
+                root.color = .Black;
+        }
+
+        pub fn delete_max(self: *Self) void {
+            if (self.root) |root|
+                self.root = Node.delete_max_node(root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
         }
