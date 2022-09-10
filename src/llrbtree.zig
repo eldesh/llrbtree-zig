@@ -89,7 +89,11 @@ pub fn LLRBTreeSet(comptime T: type) type {
             // Correct color of a node
             //
             // # Details
-            // Change the color of both nodes to black when both child nodes of a given node are red, i.e., 4 node.
+            // Flip the color of both nodes to black/red when both child nodes of a given node are red/black.
+            // For colors of both child nodes are red:
+            //   split 4node to 2 2nodes.
+            // For colors of both child nodes are black:
+            //   combine 2 2nodes into a 4node.
             fn flip_color(self: *Node) void {
                 self.color.flip();
                 self.lnode.?.color.flip();
