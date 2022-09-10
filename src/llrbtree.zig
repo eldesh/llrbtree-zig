@@ -86,18 +86,32 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 return x;
             }
 
+            // Correct color of a node
+            //
+            // # Details
+            // Change the color of both nodes to black when both child nodes of a given node are red, i.e., 4 node.
             fn flip_color(self: *Node) void {
                 self.color.flip();
                 self.lnode.?.color.flip();
                 self.rnode.?.color.flip();
             }
 
+            // Correct the tree to hold the LLRB invariant.
+            //
+            // # Details
+            // 1. Rotate left a right leaning node
+            // 1. Rotate right a 2 reds in a row to a 4node
+            // 1. Split a 4node to 2 2nodes
             fn fixup(self: *Node) *Node {
                 var h = self;
-                if (isRed(h.rnode))
+                // right leaning h => rotate left
+                if (isRed(h.rnode)) // and !isRed(h.lnode))
                     h = h.rotate_left();
+                // 2reds in a row => rotate right
                 if (isRed(h.lnode) and isRed(h.lnode.?.lnode))
                     h = h.rotate_right();
+                // if h then split
+                // NOTICE: split h on the way up the tree, then structure of `Node` should be 2-3 (without 4) tree.
                 if (isRed(h.lnode) and isRed(h.rnode))
                     h.flip_color();
                 return h;
@@ -115,14 +129,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
                     .gt => node.rnode = try insert_node(node.rnode, allocator, t),
                 }
 
-                if (isRed(node.rnode) and !isRed(node.lnode))
-                    node = node.rotate_left();
-                if (isRed(node.lnode) and isRed(node.lnode.?.lnode))
-                    node = node.rotate_right();
-                if (isRed(node.lnode) and isRed(node.rnode))
-                    node.flip_color();
-
-                return node;
+                return node.fixup();
             }
 
             // Checks if node `self` is not `null` and the value of the color field is equal to `.Red`.
