@@ -297,7 +297,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
     };
 }
 
-test "LLRBTreeSet" {
+test "delete_min" {
     const testing = std.testing;
     const rand = std.rand;
     const Array = std.ArrayList;
@@ -305,22 +305,9 @@ test "LLRBTreeSet" {
 
     const Tree = LLRBTreeSet(u32);
     {
-        var tree = Tree.new(testing.allocator);
-        defer tree.destroy();
-        var i: u32 = 0;
-        while (i <= 5) : (i += 1)
-            try tree.insert(i);
-        while (i > 0) : (i -= 1)
-            try tree.insert(i);
-        while (i <= 5) : (i += 1)
-            tree.delete(&i);
-        while (i > 0) : (i -= 1)
-            tree.delete(&i);
-    }
-    {
         var rng = rand.DefaultPrng.init(0);
         const random = rng.random();
-        const num: usize = 4096;
+        const num: usize = 40960;
 
         var tree = Tree.new(allocator);
         defer tree.destroy();
@@ -340,6 +327,61 @@ test "LLRBTreeSet" {
         while (values.popOrNull()) |_| {
             tree.delete_min();
         }
+    }
+}
+
+test "delete_max" {
+    const testing = std.testing;
+    const rand = std.rand;
+    const Array = std.ArrayList;
+    const allocator = testing.allocator;
+
+    const Tree = LLRBTreeSet(u32);
+    {
+        var rng = rand.DefaultPrng.init(0);
+        const random = rng.random();
+        const num: usize = 40960;
+
+        var tree = Tree.new(allocator);
+        defer tree.destroy();
+
+        var values = Array(u32).init(allocator);
+        defer values.deinit();
+
+        var i: usize = 0;
+        while (i < num) : (i += 1) {
+            const v = random.int(u32);
+            // if (@mod(i, 1000) == 0)
+            //     std.debug.print("v: {}th... {}\n", .{ i, v });
+            try values.append(v);
+            try tree.insert(v);
+        }
+
+        while (values.popOrNull()) |_| {
+            tree.delete_max();
+        }
+    }
+}
+
+test "insert / delete" {
+    const testing = std.testing;
+    const rand = std.rand;
+    const Array = std.ArrayList;
+    const allocator = testing.allocator;
+
+    const Tree = LLRBTreeSet(u32);
+    {
+        var tree = Tree.new(testing.allocator);
+        defer tree.destroy();
+        var i: u32 = 0;
+        while (i <= 5) : (i += 1)
+            try tree.insert(i);
+        while (i > 0) : (i -= 1)
+            try tree.insert(i);
+        while (i <= 5) : (i += 1)
+            tree.delete(&i);
+        while (i > 0) : (i -= 1)
+            tree.delete(&i);
     }
     {
         var rng = rand.DefaultPrng.init(0);
