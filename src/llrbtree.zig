@@ -141,12 +141,12 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 return if (self) |node| node.color == .Red else false;
             }
 
-            //
+            // move a red link to the left
             fn move_redleft(self: *Node) *Node {
                 var h = self;
                 h.flip_color();
                 // flip_color ensures both links are not null
-                if (isRed(self.rnode.?.lnode)) {
+                if (isRed(h.rnode.?.lnode)) {
                     h.rnode = h.rnode.?.rotate_right();
                     h = h.rotate_left();
                     h.flip_color();
@@ -154,14 +154,14 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 return h;
             }
 
+            // move a red link to the right
             fn move_redright(self: *Node) *Node {
                 var h = self;
                 // Combine as it maybe 2 x 2nodes.
                 // 'Maybe' because this function called after the invariant is broken.
                 h.flip_color();
                 // flip_color ensures both links are not null
-                if (isRed(self.lnode.?.lnode)) {
-                    //
+                if (isRed(h.lnode.?.lnode)) {
                     h = h.rotate_right();
                     h.flip_color();
                 }
@@ -204,14 +204,29 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 return h.fixup();
             }
 
+            // Delete the node have min value the left most node
+            //
+            // # Details
+            //
             fn delete_min_node(self: *Node, allocator: Allocator) ?*Node {
-                if (self.lnode == null) {
+                var h = self;
+
+                if (h.lnode == null) {
                     // std.debug.print("delete_min_node: {}\n", .{self.?.value});
-                    allocator.destroy(self);
+                    std.debug.assert(h.lnode == null);
+                    allocator.destroy(h);
                     return null;
                 }
 
-                var h = self;
+                // left-leaning 3node or 2node
+                std.debug.assert(!isRed(h.rnode));
+
+                // isRed(h.lnode):
+                //   `h` is a left-leaning 3node.
+                //   4node must not be occurred because this is llrb-2-3 Tree.
+                //
+                // isRed(h.lnode.?.lnode):
+                //   The left node is a (root of) left-leaning 3node.
                 if (!isRed(h.lnode) and !isRed(h.lnode.?.lnode))
                     h = h.move_redleft();
 
@@ -246,7 +261,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 // isRed(h.rnode):
                 //   `h` is a right-leaning 3node.
                 //
-                // isRed(h.rnode.?.lnode)):
+                // isRed(h.rnode.?.lnode):
                 //   The right node is a (root of) left-leaning 3node.
                 if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
                     h = h.move_redright();
