@@ -145,7 +145,8 @@ pub fn LLRBTreeSet(comptime T: type) type {
             fn move_redleft(self: *Node) *Node {
                 var h = self;
                 h.flip_color();
-                if (self.rnode != null and isRed(self.rnode.?.lnode)) {
+                // flip_color ensures both links are not null
+                if (isRed(self.rnode.?.lnode)) {
                     h.rnode = h.rnode.?.rotate_right();
                     h = h.rotate_left();
                     h.flip_color();
@@ -155,8 +156,12 @@ pub fn LLRBTreeSet(comptime T: type) type {
 
             fn move_redright(self: *Node) *Node {
                 var h = self;
+                // Combine as it maybe 2 x 2nodes.
+                // 'Maybe' because this function called after the invariant is broken.
                 h.flip_color();
-                if (self.lnode != null and isRed(self.lnode.?.lnode)) {
+                // flip_color ensures both links are not null
+                if (isRed(self.lnode.?.lnode)) {
+                    //
                     h = h.rotate_right();
                     h.flip_color();
                 }
@@ -214,6 +219,12 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 return h.fixup();
             }
 
+            // Delete the node have max value the right most node
+            //
+            // # Details
+            // Move red link down/right to tree.
+            // Because removing a black link breaks balance.
+            //
             fn delete_max_node(self: *Node, allocator: Allocator) ?*Node {
                 var h = self;
 
@@ -221,12 +232,22 @@ pub fn LLRBTreeSet(comptime T: type) type {
                     // to right leaning
                     h = h.rotate_right();
 
+                // 2 red nodes are not contiguous
+                std.debug.assert(!isRed(h.lnode));
+
                 if (h.rnode == null) {
-                    // std.debug.print("delete_max_node: {}\n", .{h.value});
+                    //std.debug.assert(h.color == .Red);
+                    std.debug.assert(h.lnode == null);
+                    //std.debug.print("delete_max_node: {}\n", .{h.value});
                     allocator.destroy(h);
                     return null;
                 }
 
+                // isRed(h.rnode):
+                //   `h` is a right-leaning 3node.
+                //
+                // isRed(h.rnode.?.lnode)):
+                //   The right node is a (root of) left-leaning 3node.
                 if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
                     h = h.move_redright();
 
