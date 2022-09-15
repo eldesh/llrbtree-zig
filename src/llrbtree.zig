@@ -256,7 +256,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
                     if (Con.PartialOrd.on(*const T)(value, &h.value).?.compare(.eq)) {
                         const rm = h.rnode.?.min();
                         h.value = rm.value;
-                        h.rnode = delete_min_node(h.rnode.?, allocator);
+                        _ = delete_min_node(&h.rnode, allocator);
                         // if (h.rnode) |rnode|
                         //     rnode.check_inv() catch unreachable;
                     } else {
@@ -272,14 +272,19 @@ pub fn LLRBTreeSet(comptime T: type) type {
             //
             // # Details
             //
-            fn delete_min_node(self: *Node, allocator: Allocator) ?*Node {
-                var h = self;
-
-                if (h.lnode == null) {
-                    // std.debug.print("delete_min_node: {}\n", .{self.?.value});
-                    std.debug.assert(h.lnode == null);
-                    allocator.destroy(h);
+            fn delete_min_node(self: *?*Node, allocator: Allocator) ?T {
+                if (self.* == null)
                     return null;
+
+                var h: *Node = self.*.?;
+                var old: ?T = null;
+                if (h.lnode == null) {
+                    // std.debug.print("delete_min_node: lnode=null: {}\n", .{h.value});
+                    old = h.value;
+                    std.debug.assert(h.rnode == null);
+                    allocator.destroy(h);
+                    self.* = null;
+                    return old;
                 }
 
                 // left-leaning 3node or 2node
@@ -291,11 +296,16 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 //
                 // isRed(h.lnode.?.lnode):
                 //   The left node is a (root of) left-leaning 3node.
-                if (!isRed(h.lnode) and !isRed(h.lnode.?.lnode))
+                if (!isRed(h.lnode) and !isRed(h.lnode.?.lnode)) {
                     h = h.move_redleft();
+                    // std.debug.print("delete_min_node: move_redleft\n", .{});
+                }
 
-                h.lnode = delete_min_node(h.lnode.?, allocator);
-                return h.fixup();
+                old = delete_min_node(&h.lnode, allocator);
+                // std.debug.print("delete_min_node: old: {}\n", .{old});
+                self.* = h.fixup();
+                // std.debug.print("delete_min_node: fixup\n", .{});
+                return old;
             }
 
             // Delete the node have max value the right most node
@@ -386,13 +396,17 @@ pub fn LLRBTreeSet(comptime T: type) type {
             }
         }
 
-        pub fn delete_min(self: *Self) void {
+        pub fn delete_min(self: *Self) ?T {
+            var old: ?T = null;
             if (self.root) |root|
-                self.root = Node.delete_min_node(root, self.allocator);
+                root.check_inv() catch unreachable;
+            if (self.root) |_|
+                old = Node.delete_min_node(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
             if (self.root) |root|
                 root.check_inv() catch unreachable;
+            return old;
         }
 
         pub fn delete_max(self: *Self) void {
@@ -422,7 +436,7 @@ test "delete_min" {
     {
         var rng = rand.DefaultPrng.init(0);
         const random = rng.random();
-        const num: usize = 40960;
+        const num: usize = 4096;
 
         var tree = Tree.new(allocator);
         defer tree.destroy();
@@ -433,14 +447,20 @@ test "delete_min" {
         var i: usize = 0;
         while (i < num) : (i += 1) {
             const v = random.int(u32);
-            // if (@mod(i, 1000) == 0)
-            //     std.debug.print("v: {}th... {}\n", .{ i, v });
+            if (@mod(i, num / 10) == 0)
+                std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
             _ = try tree.insert(v);
         }
 
-        while (values.popOrNull()) |_| {
-            tree.delete_min();
+        std.debug.print("delete_min...\n", .{});
+        std.debug.assert(tree.root != null);
+
+        i = 0;
+        while (values.popOrNull()) |_| : (i += 1) {
+            const rm = tree.delete_min();
+            if (@mod(i, num / 10) == 0)
+                std.debug.print("v: {}th... {}\n", .{ i, rm.? });
         }
     }
 }
@@ -455,7 +475,7 @@ test "delete_max" {
     {
         var rng = rand.DefaultPrng.init(0);
         const random = rng.random();
-        const num: usize = 40960;
+        const num: usize = 4096;
 
         var tree = Tree.new(allocator);
         defer tree.destroy();
@@ -466,8 +486,8 @@ test "delete_max" {
         var i: usize = 0;
         while (i < num) : (i += 1) {
             const v = random.int(u32);
-            // if (@mod(i, 1000) == 0)
-            //     std.debug.print("v: {}th... {}\n", .{ i, v });
+            if (@mod(i, num / 10) == 0)
+                std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
             _ = try tree.insert(v);
         }
