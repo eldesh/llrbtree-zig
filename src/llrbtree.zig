@@ -164,20 +164,24 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 return h;
             }
 
-            fn insert_node(self: ?*Node, allocator: Allocator, t: T) Allocator.Error!*Node {
-                if (self == null)
-                    return Node.new(allocator, t, null, null);
-
-                var node = self.?;
-                node.check_inv() catch unreachable;
-
-                switch (Con.PartialOrd.on(*const T)(&t, &node.value).?) {
-                    .lt => node.lnode = try insert_node(node.lnode, allocator, t),
-                    .eq => node.value = t,
-                    .gt => node.rnode = try insert_node(node.rnode, allocator, t),
+            fn insert_node(self: *?*Node, allocator: Allocator, t: T) Allocator.Error!?T {
+                if (self.* == null) {
+                    self.* = try Node.new(allocator, t, null, null);
+                    return null;
                 }
 
-                return node.fixup();
+                var node = self.*.?;
+                node.check_inv() catch unreachable;
+
+                var old: ?T = null;
+                switch (Con.PartialOrd.on(*const T)(&t, &node.value).?) {
+                    .lt => _ = try insert_node(&node.lnode, allocator, t),
+                    .eq => old = node.value,
+                    .gt => _ = try insert_node(&node.rnode, allocator, t),
+                }
+
+                self.* = node.fixup();
+                return old;
             }
 
             // Checks if node `self` is not `null` and the value of the color field is equal to `.Red`.
@@ -357,16 +361,17 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 node.check_inv() catch unreachable;
         }
 
-        pub fn insert(self: *Self, value: T) !void {
+        pub fn insert(self: *Self, value: T) !?T {
             if (self.root) |root|
                 try root.check_inv();
-            self.root = try Node.insert_node(
-                self.root,
+            const old = try Node.insert_node(
+                &self.root,
                 self.allocator,
                 value,
             );
             self.root.?.color = .Black;
             try self.root.?.check_inv();
+            return old;
         }
 
         pub fn delete(self: *Self, value: *const T) void {
@@ -431,7 +436,7 @@ test "delete_min" {
             // if (@mod(i, 1000) == 0)
             //     std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
-            try tree.insert(v);
+            _ = try tree.insert(v);
         }
 
         while (values.popOrNull()) |_| {
@@ -464,7 +469,7 @@ test "delete_max" {
             // if (@mod(i, 1000) == 0)
             //     std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
-            try tree.insert(v);
+            _ = try tree.insert(v);
         }
 
         while (values.popOrNull()) |_| {
@@ -485,9 +490,9 @@ test "insert / delete" {
         defer tree.destroy();
         var i: u32 = 0;
         while (i <= 5) : (i += 1)
-            try tree.insert(i);
+            _ = try tree.insert(i);
         while (i > 0) : (i -= 1)
-            try tree.insert(i);
+            _ = try tree.insert(i);
         while (i <= 5) : (i += 1)
             tree.delete(&i);
         while (i > 0) : (i -= 1)
@@ -510,7 +515,7 @@ test "insert / delete" {
             // if (@mod(i, num / 10) == 0)
             //     std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
-            try tree.insert(v);
+            _ = try tree.insert(v);
         }
 
         while (values.popOrNull()) |v| {
