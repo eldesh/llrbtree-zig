@@ -105,8 +105,6 @@ pub fn LLRBTreeSet(comptime T: type) type {
                     node.rnode = null;
                     allocator.destroy(node);
                 }
-                if (self) |node|
-                    node.check_inv() catch unreachable;
             }
 
             fn rotate_right(self: *Node) *Node {
@@ -175,9 +173,12 @@ pub fn LLRBTreeSet(comptime T: type) type {
 
                 var old: ?T = null;
                 switch (Con.PartialOrd.on(*const T)(&t, &node.value).?) {
-                    .lt => _ = try insert_node(&node.lnode, allocator, t),
-                    .eq => old = node.value,
-                    .gt => _ = try insert_node(&node.rnode, allocator, t),
+                    .lt => old = try insert_node(&node.lnode, allocator, t),
+                    .eq => {
+                        old = node.value;
+                        node.value = t;
+                    },
+                    .gt => old = try insert_node(&node.rnode, allocator, t),
                 }
 
                 self.* = node.fixup();
@@ -362,13 +363,11 @@ pub fn LLRBTreeSet(comptime T: type) type {
         // }
 
         pub fn destroy(self: *Self) void {
-            if (self.root) |node| {
-                node.check_inv() catch unreachable;
-                Node.destroy(node, self.allocator);
-                self.root = null;
-            }
             if (self.root) |node|
                 node.check_inv() catch unreachable;
+
+            Node.destroy(self.root, self.allocator);
+            self.root = null;
         }
 
         pub fn insert(self: *Self, value: T) !?T {
@@ -424,6 +423,45 @@ pub fn LLRBTreeSet(comptime T: type) type {
         // pub fn mut_get(self: *Self, key: *K) ?Entry {
         // }
     };
+}
+
+test "simple insert" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const Tree = LLRBTreeSet(u32);
+
+    var tree = Tree.new(allocator);
+    defer tree.destroy();
+
+    var values = [_]u32{ 0, 1, 2, 3, 4 };
+
+    for (values) |v| {
+        _ = try tree.insert(v);
+    }
+}
+
+test "insert" {
+    const testing = std.testing;
+    const rand = std.rand;
+    const allocator = testing.allocator;
+
+    const Tree = LLRBTreeSet(u32);
+    var rng = rand.DefaultPrng.init(0);
+    const random = rng.random();
+    const num: usize = 20;
+
+    var tree = Tree.new(allocator);
+    defer tree.destroy();
+
+    var i: usize = 0;
+    while (i < num) : (i += 1) {
+        const v = random.int(u4);
+        // std.debug.print("v: {}th... {}\n", .{ i, v });
+        if (try tree.insert(v)) |_| {
+            // std.debug.print("already exist: {}\n", .{old});
+        }
+    }
 }
 
 test "delete_min" {
