@@ -46,6 +46,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         pub const NodeError = error{
             TwoRedsInARow,
             NotLeftLeaning,
+            PerfectBlackBalance,
         };
 
         pub const Node = struct {
@@ -63,6 +64,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
 
                 try self.?.check_disallowed_2reds();
                 try self.?.check_left_leaning();
+                try self.?.check_perfect_black_balance();
             }
 
             fn check_disallowed_2reds(self: @This()) NodeError!void {
@@ -87,6 +89,31 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 } else {
                     return NodeError.NotLeftLeaning;
                 }
+            }
+
+            fn check_perfect_black_balance(self: @This()) NodeError!void {
+                var self_ = self;
+                var rblack: u32 = 0;
+                var lblack: u32 = 0;
+
+                var node: ?*Node = &self_;
+                while (node) |n| : (node = n.rnode) {
+                    if (!isRed(n.rnode))
+                        rblack += 1;
+                }
+                node = &self_;
+                while (node) |n| : (node = n.lnode) {
+                    if (!isRed(n.lnode))
+                        lblack += 1;
+                }
+                if (rblack != lblack) {
+                    std.debug.print("balance: {} vs {}\n", .{ lblack, rblack });
+                    return NodeError.PerfectBlackBalance;
+                }
+                if (self.rnode) |rnode|
+                    try rnode.check_perfect_black_balance();
+                if (self.lnode) |lnode|
+                    try lnode.check_perfect_black_balance();
             }
 
             fn new(alloc: Allocator, value: T, lnode: ?*Node, rnode: ?*Node) !*Node {
