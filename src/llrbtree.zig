@@ -282,14 +282,14 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 if (h.lnode == null) {
                     // std.debug.print("delete_min_node: lnode=null: {}\n", .{h.value});
                     old = h.value;
-                    std.debug.assert(h.rnode == null);
+                    assert(h.rnode == null);
                     allocator.destroy(h);
                     self.* = null;
                     return old;
                 }
 
                 // left-leaning 3node or 2node
-                std.debug.assert(!isRed(h.rnode));
+                assert(!isRed(h.rnode));
 
                 // isRed(h.lnode):
                 //   `h` is a left-leaning 3node.
@@ -315,22 +315,26 @@ pub fn LLRBTreeSet(comptime T: type) type {
             // Move red link down/right to tree.
             // Because removing a black link breaks balance.
             //
-            fn delete_max_node(self: *Node, allocator: Allocator) ?*Node {
-                var h = self;
+            fn delete_max_node(self: *?*Node, allocator: Allocator) ?T {
+                if (self.* == null)
+                    return null;
 
+                var h = self.*.?;
                 if (isRed(h.lnode))
                     // to right leaning
                     h = h.rotate_right();
 
                 // 2 red nodes are not contiguous
-                std.debug.assert(!isRed(h.lnode));
+                assert(!isRed(h.lnode));
 
+                var old: ?T = null;
                 if (h.rnode == null) {
-                    //std.debug.assert(h.color == .Red);
-                    std.debug.assert(h.lnode == null);
-                    //std.debug.print("delete_max_node: {}\n", .{h.value});
+                    // std.debug.print("delete_max_node: {}\n", .{h.value});
+                    old = h.value;
+                    assert(h.lnode == null);
                     allocator.destroy(h);
-                    return null;
+                    self.* = null;
+                    return old;
                 }
 
                 // isRed(h.rnode):
@@ -341,8 +345,9 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
                     h = h.move_redright();
 
-                h.rnode = delete_max_node(h.rnode.?, allocator);
-                return h.fixup();
+                old = delete_max_node(&h.rnode, allocator);
+                self.* = h.fixup();
+                return old;
             }
         };
 
@@ -395,6 +400,11 @@ pub fn LLRBTreeSet(comptime T: type) type {
             }
         }
 
+        /// Delete the minimum element from tree
+        ///
+        /// # Details
+        /// Delete the minimum element from tree `self`, and returns it.
+        /// And `null` is returned for empty tree.
         pub fn delete_min(self: *Self) ?T {
             var old: ?T = null;
             if (self.root) |root|
@@ -408,13 +418,22 @@ pub fn LLRBTreeSet(comptime T: type) type {
             return old;
         }
 
-        pub fn delete_max(self: *Self) void {
+        /// Delete the maximum element from tree
+        ///
+        /// # Details
+        /// Delete the maximum element from tree `self`, and returns it.
+        /// And `null` is returned for empty tree.
+        pub fn delete_max(self: *Self) ?T {
+            var old: ?T = null;
             if (self.root) |root|
-                self.root = Node.delete_max_node(root, self.allocator);
+                root.check_inv() catch unreachable;
+            if (self.root) |_|
+                old = Node.delete_max_node(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
             if (self.root) |root|
                 root.check_inv() catch unreachable;
+            return old;
         }
 
         // pub fn get(self: *Self, key: *K) ?Entry {
@@ -436,9 +455,8 @@ test "simple insert" {
 
     var values = [_]u32{ 0, 1, 2, 3, 4 };
 
-    for (values) |v| {
+    for (values) |v|
         _ = try tree.insert(v);
-    }
 }
 
 test "insert" {
@@ -485,20 +503,26 @@ test "delete_min" {
         var i: usize = 0;
         while (i < num) : (i += 1) {
             const v = random.int(u32);
-            if (@mod(i, num / 10) == 0)
-                std.debug.print("v: {}th... {}\n", .{ i, v });
+            // if (@mod(i, num / 10) == 0)
+            //     std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
             _ = try tree.insert(v);
         }
 
-        std.debug.print("delete_min...\n", .{});
-        std.debug.assert(tree.root != null);
+        assert(tree.root != null);
 
         i = 0;
+        var min: u32 = 0;
         while (values.popOrNull()) |_| : (i += 1) {
-            const rm = tree.delete_min();
-            if (@mod(i, num / 10) == 0)
-                std.debug.print("v: {}th... {}\n", .{ i, rm.? });
+            const p = @mod(i, num / 10) == 0;
+            _ = p;
+            if (tree.delete_min()) |rm| {
+                // if (p) std.debug.print("v: {}th... {}\n", .{ i, rm });
+                assert(min <= rm);
+                min = rm;
+            } else {
+                // if (p) std.debug.print("v: {}th... none\n", .{i});
+            }
         }
     }
 }
@@ -524,14 +548,24 @@ test "delete_max" {
         var i: usize = 0;
         while (i < num) : (i += 1) {
             const v = random.int(u32);
-            if (@mod(i, num / 10) == 0)
-                std.debug.print("v: {}th... {}\n", .{ i, v });
+            // if (@mod(i, num / 10) == 0)
+            //     std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
             _ = try tree.insert(v);
         }
 
-        while (values.popOrNull()) |_| {
-            tree.delete_max();
+        i = 0;
+        var max: u32 = std.math.maxInt(u32);
+        while (values.popOrNull()) |_| : (i += 1) {
+            const p = @mod(i, num / 10) == 0;
+            _ = p;
+            if (tree.delete_max()) |rm| {
+                // if (p) std.debug.print("v: {}th... {}\n", .{ i, rm });
+                assert(rm <= max);
+                max = rm;
+            } else {
+                // if (p) std.debug.print("v: {}th... none\n", .{i});
+            }
         }
     }
 }
