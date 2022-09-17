@@ -317,7 +317,8 @@ pub fn LLRBTreeSet(comptime T: type) type {
             // Delete the node have min value the left most node
             //
             // # Details
-            //
+            // Delete the min value from the tree `self` and returns the removed value.
+            // If the tree is empty, `null` is returned.
             fn delete_min_node(self: *?*Node, allocator: Allocator) ?T {
                 if (self.* == null)
                     return null;
@@ -344,22 +345,21 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 //   The left node is a (root of) left-leaning 3node.
                 if (!isRed(h.lnode) and !isRed(h.lnode.?.lnode)) {
                     h = h.move_redleft();
-                    // std.debug.print("delete_min_node: move_redleft\n", .{});
                 }
 
                 old = delete_min_node(&h.lnode, allocator);
-                // std.debug.print("delete_min_node: old: {}\n", .{old});
                 self.* = h.fixup();
-                // std.debug.print("delete_min_node: fixup\n", .{});
                 return old;
             }
 
             // Delete the node have max value the right most node
             //
             // # Details
+            // Delete the max value from the tree `self` and returns the removed value.
+            // If the tree is empty, `null` is returned.
+            //
             // Move red link down/right to tree.
             // Because removing a black link breaks balance.
-            //
             fn delete_max_node(self: *?*Node, allocator: Allocator) ?T {
                 if (self.* == null)
                     return null;
