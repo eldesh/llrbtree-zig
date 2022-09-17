@@ -223,50 +223,68 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 return h;
             }
 
-            fn delete_node(self: *Node, allocator: Allocator, value: *const T) ?*Node {
-                var h = self;
+            fn delete_node(self: *?*Node, allocator: Allocator, value: *const T) ?T {
+                if (self.* == null)
+                    return null;
+
+                var h = self.*.?;
+                // removed value if it found
+                var old: ?T = null;
                 if (Con.PartialOrd.on(*const T)(value, &h.value).?.compare(.lt)) {
                     // not found the value `value.*`
                     if (h.lnode == null) {
-                        // std.debug.print("l: not found the value: {}\n", .{value.*});
-                        return h;
+                        return null;
                     }
                     if (!isRed(h.lnode) and !isRed(h.lnode.?.lnode))
                         h = h.move_redleft();
-                    h.lnode = delete_node(h.lnode.?, allocator, value);
-                    // if (h.lnode) |lnode|
-                    //     lnode.check_inv() catch unreachable;
+                    old = delete_node(&h.lnode, allocator, value);
                 } else {
-                    if (isRed(h.lnode))
+                    if (isRed(h.lnode)) {
+                        // right-leaning 3node
                         h = h.rotate_right();
-
-                    if (Con.PartialOrd.on(*const T)(value, &h.value).?.compare(.eq) and h.rnode == null) {
-                        // std.debug.assert(h.lnode == null);
-                        allocator.destroy(h);
-                        return null;
+                        assert(h.rnode != null);
                     }
 
-                    // not found
+                    // If `h` is right rotated, then right node is non-null.
+                    // Therefore `h` is not right rotated.
+
+                    // Found a node to be deleted on the leaf
+                    if (Con.PartialOrd.on(*const T)(value, &h.value).?.compare(.eq) and h.rnode == null) {
+                        assert(h.lnode == null);
+                        old = h.value;
+                        allocator.destroy(h);
+                        self.* = null;
+                        return old;
+                    }
+
+                    // Not found a node have the value equals to `value.*`
+                    //
+                    // - Not (`value` equals to `h.value` and right node is null)
+                    //   ==> by DeMorgan law
+                    //   `value` not equals to `h.value` or right node is non-null
                     if (h.rnode == null) {
-                        return h;
+                        // Right node is null.
+                        // These conditions are able to be represented as formally:
+                        // `(value != h.value \/ rnode != null) /\ rnode = null`
+                        // Then the condition `value != h.value` is satisfied.
+                        assert(Con.PartialOrd.on(*const T)(value, &h.value).?.compare(.neq));
+                        return null;
                     }
 
                     if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
                         h = h.move_redright();
 
                     if (Con.PartialOrd.on(*const T)(value, &h.value).?.compare(.eq)) {
-                        const rm = h.rnode.?.min();
-                        h.value = rm.value;
-                        _ = delete_min_node(&h.rnode, allocator);
-                        // if (h.rnode) |rnode|
-                        //     rnode.check_inv() catch unreachable;
+                        // const rm = h.rnode.?.min();
+                        // h.value = rm.value;
+                        old = h.value;
+                        h.value = delete_min_node(&h.rnode, allocator).?;
                     } else {
-                        h.rnode = delete_node(h.rnode.?, allocator, value);
-                        // if (h.rnode) |rnode|
-                        //     rnode.check_inv() catch unreachable;
+                        old = delete_node(&h.rnode, allocator, value);
                     }
                 }
-                return h.fixup();
+                self.* = h.fixup();
+                return old;
             }
 
             // Delete the node have min value the left most node
@@ -388,16 +406,17 @@ pub fn LLRBTreeSet(comptime T: type) type {
             return old;
         }
 
-        pub fn delete(self: *Self, value: *const T) void {
-            if (self.root) |root| {
+        pub fn delete(self: *Self, value: *const T) ?T {
+            if (self.root) |root|
                 root.check_inv() catch unreachable;
-                self.root = Node.delete_node(root, self.allocator, value);
-                if (self.root) |sroot|
-                    sroot.color = .Black;
-            }
-            if (self.root) |root| {
+
+            const old = Node.delete_node(&self.root, self.allocator, value);
+            if (self.root) |sroot|
+                sroot.color = .Black;
+
+            if (self.root) |root|
                 root.check_inv() catch unreachable;
-            }
+            return old;
         }
 
         /// Delete the minimum element from tree
@@ -456,7 +475,7 @@ test "simple insert" {
     var values = [_]u32{ 0, 1, 2, 3, 4 };
 
     for (values) |v|
-        _ = try tree.insert(v);
+        try testing.expectEqual(try tree.insert(v), null);
 }
 
 test "insert" {
@@ -476,8 +495,9 @@ test "insert" {
     while (i < num) : (i += 1) {
         const v = random.int(u4);
         // std.debug.print("v: {}th... {}\n", .{ i, v });
-        if (try tree.insert(v)) |_| {
+        if (try tree.insert(v)) |x| {
             // std.debug.print("already exist: {}\n", .{old});
+            assert(v == x);
         }
     }
 }
@@ -551,14 +571,15 @@ test "delete_max" {
             // if (@mod(i, num / 10) == 0)
             //     std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
-            _ = try tree.insert(v);
+            if (try tree.insert(v)) |old| {
+                assert(v == old);
+            }
         }
 
         i = 0;
         var max: u32 = std.math.maxInt(u32);
         while (values.popOrNull()) |_| : (i += 1) {
-            const p = @mod(i, num / 10) == 0;
-            _ = p;
+            // const p = @mod(i, num / 10) == 0;
             if (tree.delete_max()) |rm| {
                 // if (p) std.debug.print("v: {}th... {}\n", .{ i, rm });
                 assert(rm <= max);
@@ -576,27 +597,31 @@ test "insert / delete" {
     const Array = std.ArrayList;
     const allocator = testing.allocator;
 
-    const Tree = LLRBTreeSet(u32);
     {
-        var tree = Tree.new(testing.allocator);
-        defer tree.destroy();
-        var i: u32 = 0;
+        var tree = LLRBTreeSet(i32).new(testing.allocator);
+        // all nodes would be destroyed
+        // defer tree.destroy();
+        var i: i32 = 0;
         while (i <= 5) : (i += 1)
-            _ = try tree.insert(i);
-        while (i > 0) : (i -= 1)
-            _ = try tree.insert(i);
+            try testing.expectEqual(try tree.insert(i), null);
+        i -= 1;
+        while (i >= 0) : (i -= 1)
+            try testing.expectEqual(try tree.insert(i), i);
+        i += 1;
         while (i <= 5) : (i += 1)
-            tree.delete(&i);
-        while (i > 0) : (i -= 1)
-            tree.delete(&i);
+            try testing.expectEqual(tree.delete(&i), i);
+        i -= 1;
+        while (i >= 0) : (i -= 1)
+            try testing.expectEqual(tree.delete(&i), null);
     }
     {
         var rng = rand.DefaultPrng.init(0);
         const random = rng.random();
         const num: usize = 4096;
 
-        var tree = Tree.new(allocator);
-        defer tree.destroy();
+        var tree = LLRBTreeSet(u32).new(allocator);
+        // all nodes would be destroyed
+        // defer tree.destroy();
 
         var values = Array(u32).init(allocator);
         defer values.deinit();
@@ -607,11 +632,13 @@ test "insert / delete" {
             // if (@mod(i, num / 10) == 0)
             //     std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
-            _ = try tree.insert(v);
+            if (try tree.insert(v)) |in|
+                assert(v == in);
         }
 
         while (values.popOrNull()) |v| {
-            tree.delete(&v);
+            if (tree.delete(&v)) |rm|
+                assert(v == rm);
         }
     }
 }
