@@ -9,6 +9,7 @@
 ///
 const std = @import("std");
 const Con = @import("basis_concept");
+const Iter = @import("./iter.zig");
 
 const math = std.math;
 
@@ -33,7 +34,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
 
     return struct {
         pub const Self = @This();
-        pub const T = T;
+        pub const Item = T;
 
         // pub const Entry = struct {
         //     key: *const Key,
@@ -132,6 +133,16 @@ pub fn LLRBTreeSet(comptime T: type) type {
                     node.rnode = null;
                     allocator.destroy(node);
                 }
+            }
+
+            pub fn black_height(self: ?*const Node) usize {
+                var h: usize = if (isRed(self)) 1 else 0;
+                var node: ?*const Node = self;
+                while (node) |n| : (node = n.lnode) {
+                    if (!isRed(n.lnode))
+                        h += 1;
+                }
+                return h;
             }
 
             fn rotate_right(self: *Node) *Node {
@@ -400,14 +411,13 @@ pub fn LLRBTreeSet(comptime T: type) type {
             return .{ .allocator = allocator, .root = null };
         }
 
-        // pub fn keys(self: *const Self) iter.KeyConstIter(K, V) {
-        // }
+        fn black_height(self: ?*const Self) usize {
+            return Node.black_height(self.root);
+        }
 
-        // pub fn mut_keys(self: *Self) iter.KeyIter(K, V) {
-        // }
-
-        // pub fn values(self: *const Self) iter.ValueConstIter(K, V) {
-        // }
+        pub fn values(self: *const Self) Allocator.Error!Iter.ValueConstIter(Item) {
+            return Iter.ValueConstIter(Item).new(self.root, self.allocator);
+        }
 
         // pub fn mut_values(self: *Self) iter.ValueIter(K, V) {
         // }
@@ -667,5 +677,21 @@ test "insert / delete" {
             if (tree.delete(&v)) |rm|
                 assert(v == rm);
         }
+    }
+}
+
+test "values" {
+    const testing = std.testing;
+
+    {
+        var tree = LLRBTreeSet(i32).new(testing.allocator);
+        defer tree.destroy();
+
+        var i: i32 = 0;
+        while (i <= 5) : (i += 1)
+            try testing.expectEqual(try tree.insert(i), null);
+
+        var iter = try tree.values();
+        while (iter.next()) |_| {}
     }
 }

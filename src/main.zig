@@ -1,5 +1,5 @@
 /// Red-Black tree implementations. A Variant of balanced binary tree.
-pub const llrbtree = @import("./llrbtree.zig");
+pub const llrbset = @import("./llrbset/llrbset.zig");
 
 test {
     const std = @import("std");
