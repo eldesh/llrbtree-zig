@@ -688,10 +688,14 @@ test "values" {
         defer tree.destroy();
 
         var i: i32 = 0;
-        while (i <= 5) : (i += 1)
+        while (i <= 4096) : (i += 1)
             try testing.expectEqual(try tree.insert(i), null);
 
         var iter = try tree.values();
-        while (iter.next()) |_| {}
+        defer iter.destroy();
+        while (iter.next()) |item| {
+            _ = item;
+            // std.debug.print("item: {}\n", .{item.*});
+        }
     }
 }
