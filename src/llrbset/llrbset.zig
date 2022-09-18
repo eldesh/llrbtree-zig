@@ -1,12 +1,3 @@
-/// Left-leaning Red-Black Tree implementation. A variant of balanced binary tree.
-///
-/// # Summary
-/// This module provides Left-leaning Red-Black Tree (LLRB tree) implementation which is a variant of Red-Black Tree.
-/// The LLRB tree restricts the invariant of the tree, then the number of tree operations are reduced compared to the naive Red-Black Tree.
-///
-/// # Cite
-/// Left-leaning Red-Black Trees, Robert Sedgewick https://sedgewick.io/wp-content/themes/sedgewick/papers/2008LLRB.pdf
-///
 const std = @import("std");
 const builtin = @import("builtin");
 const Con = @import("basis_concept");
