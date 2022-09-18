@@ -36,11 +36,6 @@ pub fn LLRBTreeSet(comptime T: type) type {
         pub const Self = @This();
         pub const Item = T;
 
-        // pub const Entry = struct {
-        //     key: *const Key,
-        //     val: *Value,
-        // };
-
         allocator: Allocator,
         root: ?*Node,
 
@@ -415,12 +410,9 @@ pub fn LLRBTreeSet(comptime T: type) type {
             return Node.black_height(self.root);
         }
 
-        pub fn values(self: *const Self) Allocator.Error!Iter.ValueConstIter(Item) {
-            return Iter.ValueConstIter(Item).new(self.root, self.allocator);
+        pub fn iter(self: *const Self) Allocator.Error!Iter.Iter(Item) {
+            return Iter.Iter(Item).new(self.root, self.allocator);
         }
-
-        // pub fn mut_values(self: *Self) iter.ValueIter(K, V) {
-        // }
 
         pub fn destroy(self: *Self) void {
             if (self.root) |node|
@@ -691,7 +683,7 @@ test "values" {
         while (i <= 4096) : (i += 1)
             try testing.expectEqual(try tree.insert(i), null);
 
-        var iter = try tree.values();
+        var iter = try tree.iter();
         defer iter.destroy();
         while (iter.next()) |item| {
             _ = item;

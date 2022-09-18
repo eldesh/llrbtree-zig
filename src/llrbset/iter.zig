@@ -8,7 +8,7 @@ const Allocator = std.mem.Allocator;
 
 const assert = std.debug.assert;
 
-pub fn ValueConstIter(comptime V: type) type {
+pub fn ConstIter(comptime V: type) type {
     return struct {
         pub const Self: type = @This();
         pub const Item: type = *const V;
