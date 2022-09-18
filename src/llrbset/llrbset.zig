@@ -141,6 +141,17 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 return false;
             }
 
+            pub fn get(self: ?*const Node, value: *const T) ?*const T {
+                if (self) |n| {
+                    return switch (Con.PartialOrd.on(*const T)(value, &n.value).?) {
+                        .lt => Node.get(n.lnode, value),
+                        .eq => &n.value,
+                        .gt => Node.get(n.rnode, value),
+                    };
+                }
+                return null;
+            }
+
             pub fn black_height(self: ?*const Node) usize {
                 var h: usize = if (isRed(self)) 0 else 1;
                 var node: ?*const Node = self;
@@ -483,15 +494,13 @@ pub fn LLRBTreeSet(comptime T: type) type {
             return old;
         }
 
-        pub fn contains(self: *Self, value: *const T) bool {
+        pub fn contains(self: *const Self, value: *const T) bool {
             return Node.contains(self.root, value);
         }
 
-        // pub fn get(self: *Self, key: *K) ?Entry {
-        // }
-
-        // pub fn mut_get(self: *Self, key: *K) ?Entry {
-        // }
+        pub fn get(self: *const Self, value: *const T) ?*const T {
+            return Node.get(self.root, value);
+        }
     };
 }
 
@@ -525,11 +534,11 @@ test "insert" {
 
     var i: usize = 0;
     while (i < num) : (i += 1) {
-        const v = random.int(u4);
+        const v = @as(u32, random.int(u4));
         // std.debug.print("v: {}th... {}\n", .{ i, v });
         if (try tree.insert(v)) |x| {
             // std.debug.print("already exist: {}\n", .{old});
-            assert(v == x);
+            try testing.expectEqual(v, x);
         }
     }
 }
@@ -554,15 +563,47 @@ test "contains" {
 
     var i: usize = 0;
     while (i < num) : (i += 1) {
-        const v = random.int(u4);
+        const v = random.int(u32);
         try values.append(v);
         if (try tree.insert(v)) |x| {
-            assert(v == x);
+            try testing.expectEqual(v, x);
         }
     }
 
     for (values.items) |item|
         assert(tree.contains(&item));
+}
+
+test "get" {
+    const testing = std.testing;
+    const rand = std.rand;
+    const allocator = testing.allocator;
+
+    const Array = std.ArrayList;
+    const Tree = LLRBTreeSet(u32);
+
+    var rng = rand.DefaultPrng.init(0);
+    const random = rng.random();
+    const num: usize = 2000;
+
+    var tree = Tree.new(allocator);
+    defer tree.destroy();
+
+    var values = Array(u32).init(allocator);
+    defer values.deinit();
+
+    var i: usize = 0;
+    while (i < num) : (i += 1) {
+        const v = random.int(u32);
+        try values.append(v);
+        if (try tree.insert(v)) |x| {
+            try testing.expectEqual(v, x);
+        }
+    }
+
+    for (values.items) |item| {
+        try testing.expectEqual(tree.get(&item).?.*, item);
+    }
 }
 
 test "delete_min" {
