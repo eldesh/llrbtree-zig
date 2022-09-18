@@ -10,7 +10,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const Con = @import("basis_concept");
-const Iter = @import("./iter.zig");
+pub const iters = @import("./iter.zig");
 
 const math = std.math;
 
@@ -446,8 +446,8 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Returns an iterator which enumerates all values of the tree.
         /// The values are enumerated by asceding order.
         /// Also, the tree must no be modified while the iterator is alive.
-        pub fn iter(self: *const Self) Allocator.Error!Iter.Iter(Item) {
-            return Iter.Iter(Item).new(self.root, self.allocator);
+        pub fn iter(self: *const Self) Allocator.Error!iters.Iter(Item) {
+            return iters.Iter(Item).new(self.root, self.allocator);
         }
 
         /// Insert the value `value` to the tree `self`.
@@ -469,6 +469,12 @@ pub fn LLRBTreeSet(comptime T: type) type {
             return old;
         }
 
+        /// Delete a node which have a value equals to `value`.
+        ///
+        /// # Details
+        /// Delete a node which have a value equals to `value`.
+        /// If it exists, it is returned.
+        /// If it is not found, `null` is returned.
         pub fn delete(self: *Self, value: *const T) ?T {
             Node.check_inv(self.root);
 
@@ -510,10 +516,13 @@ pub fn LLRBTreeSet(comptime T: type) type {
             return old;
         }
 
+        /// Checks to see if it contains a node with a value equal to `value`.
         pub fn contains(self: *const Self, value: *const T) bool {
             return Node.contains(self.root, value);
         }
 
+        /// Checks whether a node contains a value equal to `value` and returns a pointer to that value.
+        /// If not found, returns `null`.
         pub fn get(self: *const Self, value: *const T) ?*const T {
             return Node.get(self.root, value);
         }
