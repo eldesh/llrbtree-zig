@@ -483,8 +483,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         pub fn delete_min(self: *Self) ?T {
             var old: ?T = null;
             Node.check_inv(self.root);
-            if (self.root) |_|
-                old = Node.delete_min_node(&self.root, self.allocator);
+            old = Node.delete_min_node(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
@@ -499,8 +498,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         pub fn delete_max(self: *Self) ?T {
             var old: ?T = null;
             Node.check_inv(self.root);
-            if (self.root) |_|
-                old = Node.delete_max_node(&self.root, self.allocator);
+            old = Node.delete_max_node(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
