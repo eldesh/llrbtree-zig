@@ -8,6 +8,7 @@
 /// Left-leaning Red-Black Trees, Robert Sedgewick https://sedgewick.io/wp-content/themes/sedgewick/papers/2008LLRB.pdf
 ///
 const std = @import("std");
+const builtin = @import("builtin");
 const Con = @import("basis_concept");
 const Iter = @import("./iter.zig");
 
@@ -55,6 +56,10 @@ pub fn LLRBTreeSet(comptime T: type) type {
             rnode: ?*Node,
 
             fn check_inv(self: ?*@This()) void {
+                // enabled only when Debug mode
+                if (comptime builtin.mode != std.builtin.Mode.Debug)
+                    return;
+
                 if (self == null)
                     return;
 
