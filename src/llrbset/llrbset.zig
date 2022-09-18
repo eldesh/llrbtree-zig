@@ -749,7 +749,26 @@ test "insert / delete" {
 
 test "values" {
     const testing = std.testing;
+    {
+        var tree = LLRBTreeSet(i32).new(testing.allocator);
+        defer tree.destroy();
 
+        var i: i32 = 0;
+        while (i <= 5) : (i += 1)
+            try testing.expectEqual(try tree.insert(i), null);
+
+        var iter = try tree.iter();
+        defer iter.destroy();
+
+        // values are enumerated by asceding order
+        try testing.expectEqual(iter.next().?.*, 0);
+        try testing.expectEqual(iter.next().?.*, 1);
+        try testing.expectEqual(iter.next().?.*, 2);
+        try testing.expectEqual(iter.next().?.*, 3);
+        try testing.expectEqual(iter.next().?.*, 4);
+        try testing.expectEqual(iter.next().?.*, 5);
+        try testing.expectEqual(iter.next(), null);
+    }
     {
         var tree = LLRBTreeSet(i32).new(testing.allocator);
         defer tree.destroy();
