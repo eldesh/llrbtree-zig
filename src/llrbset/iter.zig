@@ -2,13 +2,27 @@ const std = @import("std");
 const Con = @import("basis_concept");
 const llrbset = @import("./llrbset.zig");
 
-const math = std.math;
-
 const Allocator = std.mem.Allocator;
 
-const assert = std.debug.assert;
-
-pub fn ConstIter(comptime V: type) type {
+/// An iterator enumerates all values of a `LLRBTreeSet` by asceding order.
+///
+/// # Details
+/// An iterator enumerates all values of a `LLRBTreeSet` by asceding order.
+/// `Item` of the iterator is const pointer to value of the tree.
+///
+/// # Notice
+/// This iterator allocates a stack area on the heap to hold intermediate state when iterating through the tree.
+/// It should be released with `destroy`.
+///
+/// # Example
+/// ```zig
+/// var iter = tree.iter();
+/// defer iter.destroy();
+/// while (iter.next()) |item| {
+///   _ = item;
+/// }
+/// ```
+pub fn Iter(comptime V: type) type {
     return struct {
         pub const Self: type = @This();
         pub const Item: type = *const V;
