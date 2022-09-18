@@ -54,17 +54,17 @@ pub fn LLRBTreeSet(comptime T: type) type {
             // right child node
             rnode: ?*Node,
 
-            fn check_inv(self: ?@This()) !void {
+            fn check_inv(self: ?*@This()) void {
                 if (self == null)
                     return;
 
-                try self.?.check_disallowed_2reds();
-                try self.?.check_left_leaning();
-                try self.?.check_perfect_black_balance();
+                self.?.check_disallowed_2reds() catch unreachable;
+                self.?.check_left_leaning() catch unreachable;
+                self.?.check_perfect_black_balance() catch unreachable;
             }
 
-            fn check_disallowed_2reds(self: @This()) NodeError!void {
-                if (isRed(&self)) {
+            fn check_disallowed_2reds(self: *const @This()) NodeError!void {
+                if (isRed(self)) {
                     if (isRed(self.lnode) or isRed(self.rnode))
                         return NodeError.TwoRedsInARow;
                 }
@@ -76,7 +76,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
             }
 
             // isRed(self.rnode) ==> isRed(self.lnode)
-            fn check_left_leaning(self: @This()) NodeError!void {
+            fn check_left_leaning(self: *const @This()) NodeError!void {
                 if (!isRed(self.rnode) or self.lnode == null or isRed(self.lnode)) {
                     if (self.rnode) |rnode|
                         try rnode.check_left_leaning();
@@ -112,16 +112,16 @@ pub fn LLRBTreeSet(comptime T: type) type {
                     try lnode.check_perfect_black_balance();
             }
 
-            fn new(alloc: Allocator, value: T, lnode: ?*Node, rnode: ?*Node) !*Node {
+            fn new(alloc: Allocator, value: T, lnode: ?*Node, rnode: ?*Node) Allocator.Error!*Node {
                 var node = try alloc.create(Node);
                 node.* = .{ .color = .Red, .value = value, .lnode = lnode, .rnode = rnode };
-                node.check_inv() catch unreachable;
+                Node.check_inv(node);
                 return node;
             }
 
             fn destroy(self: ?*Node, allocator: Allocator) void {
+                check_inv(self);
                 if (self) |node| {
-                    node.check_inv() catch unreachable;
                     Node.destroy(node.lnode, allocator);
                     node.lnode = null;
                     Node.destroy(node.rnode, allocator);
@@ -213,7 +213,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 }
 
                 var node = self.*.?;
-                node.check_inv() catch unreachable;
+                check_inv(node);
 
                 var old: ?T = null;
                 switch (Con.PartialOrd.on(*const T)(&t, &node.value).?) {
@@ -418,8 +418,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         }
 
         pub fn destroy(self: *Self) void {
-            if (self.root) |node|
-                node.check_inv() catch unreachable;
+            Node.check_inv(self.root);
 
             Node.destroy(self.root, self.allocator);
             self.root = null;
@@ -429,29 +428,26 @@ pub fn LLRBTreeSet(comptime T: type) type {
             return Iter.Iter(Item).new(self.root, self.allocator);
         }
 
-        pub fn insert(self: *Self, value: T) !?T {
-            if (self.root) |root|
-                try root.check_inv();
+        pub fn insert(self: *Self, value: T) Allocator.Error!?T {
+            Node.check_inv(self.root);
             const old = try Node.insert_node(
                 &self.root,
                 self.allocator,
                 value,
             );
             self.root.?.color = .Black;
-            try self.root.?.check_inv();
+            Node.check_inv(self.root);
             return old;
         }
 
         pub fn delete(self: *Self, value: *const T) ?T {
-            if (self.root) |root|
-                root.check_inv() catch unreachable;
+            Node.check_inv(self.root);
 
             const old = Node.delete_node(&self.root, self.allocator, value);
             if (self.root) |sroot|
                 sroot.color = .Black;
 
-            if (self.root) |root|
-                root.check_inv() catch unreachable;
+            Node.check_inv(self.root);
             return old;
         }
 
@@ -462,14 +458,12 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// And `null` is returned for empty tree.
         pub fn delete_min(self: *Self) ?T {
             var old: ?T = null;
-            if (self.root) |root|
-                root.check_inv() catch unreachable;
+            Node.check_inv(self.root);
             if (self.root) |_|
                 old = Node.delete_min_node(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
-            if (self.root) |root|
-                root.check_inv() catch unreachable;
+            Node.check_inv(self.root);
             return old;
         }
 
@@ -480,14 +474,12 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// And `null` is returned for empty tree.
         pub fn delete_max(self: *Self) ?T {
             var old: ?T = null;
-            if (self.root) |root|
-                root.check_inv() catch unreachable;
+            Node.check_inv(self.root);
             if (self.root) |_|
                 old = Node.delete_max_node(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
-            if (self.root) |root|
-                root.check_inv() catch unreachable;
+            Node.check_inv(self.root);
             return old;
         }
 
