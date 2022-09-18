@@ -435,10 +435,23 @@ pub fn LLRBTreeSet(comptime T: type) type {
             self.root = null;
         }
 
+        /// Returns an iterator which enumerates all values of the tree.
+        ///
+        /// # Details
+        /// Returns an iterator which enumerates all values of the tree.
+        /// The values are enumerated by asceding order.
+        /// Also, the tree must no be modified while the iterator is alive.
         pub fn iter(self: *const Self) Allocator.Error!Iter.Iter(Item) {
             return Iter.Iter(Item).new(self.root, self.allocator);
         }
 
+        /// Insert the value `value` to the tree `self`.
+        ///
+        /// # Details
+        /// Insert the value `value` to the tree `self`.
+        /// If a value equals to `value` exists in the tree, the old value is replaced with the new value.
+        /// And the old value is returned.
+        /// Otherwise, `null` is returned.
         pub fn insert(self: *Self, value: T) Allocator.Error!?T {
             Node.check_inv(self.root);
             const old = try Node.insert_node(
