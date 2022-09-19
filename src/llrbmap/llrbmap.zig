@@ -323,7 +323,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                         const rm = h.rnode.?.min();
                         h.key = rm.key;
                         old = h.value;
-                        h.value = delete_min_node(&h.rnode, allocator).?;
+                        h.value = Node.delete_min(&h.rnode, allocator).?;
                     } else {
                         old = delete_node(&h.rnode, allocator, key);
                     }
@@ -337,14 +337,14 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
             // # Details
             // Delete the min value from the tree `self` and returns the removed value.
             // If the tree is empty, `null` is returned.
-            fn delete_min_node(self: *?*Node, allocator: Allocator) ?Value {
+            fn delete_min(self: *?*Node, allocator: Allocator) ?Value {
                 if (self.* == null)
                     return null;
 
                 var h: *Node = self.*.?;
                 var old: ?Value = null;
                 if (h.lnode == null) {
-                    // std.debug.print("delete_min_node: lnode=null: {}\n", .{h.value});
+                    // std.debug.print("delete_min: lnode=null: {}\n", .{h.value});
                     old = h.value;
                     assert(h.rnode == null);
                     allocator.destroy(h);
@@ -365,7 +365,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                     h = h.move_redleft();
                 }
 
-                old = delete_min_node(&h.lnode, allocator);
+                old = Node.delete_min(&h.lnode, allocator);
                 self.* = h.fixup();
                 return old;
             }
@@ -475,7 +475,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         pub fn delete_min(self: *Self) ?Value {
             var old: ?Value = null;
             Node.check_inv(self.root);
-            old = Node.delete_min_node(&self.root, self.allocator);
+            old = Node.delete_min(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
