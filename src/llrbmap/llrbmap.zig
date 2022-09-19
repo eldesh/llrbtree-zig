@@ -500,8 +500,8 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
             return old;
         }
 
-        /// Checks to see if it contains a node with a value equal to `value`.
-        pub fn contains(self: *const Self, key: *const Key) bool {
+        /// Checks to see if it contains a value for the specified `key`.
+        pub fn contains_key(self: *const Self, key: *const Key) bool {
             return Node.contains(self.root, key);
         }
 
@@ -552,7 +552,7 @@ test "insert" {
     }
 }
 
-test "contains" {
+test "contains_key" {
     const testing = std.testing;
     const rand = std.rand;
     const allocator = testing.allocator;
@@ -580,7 +580,7 @@ test "contains" {
     }
 
     for (values.items) |item|
-        assert(tree.contains(&item));
+        assert(tree.contains_key(&item));
 }
 
 test "get" {
