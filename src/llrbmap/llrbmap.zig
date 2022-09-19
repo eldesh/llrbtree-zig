@@ -381,7 +381,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
             //
             // Move red link down/right to tree.
             // Because removing a black link breaks balance.
-            fn delete_max_node(self: *?*Node, allocator: Allocator) ?KeyValue(Key, Value) {
+            fn delete_max(self: *?*Node, allocator: Allocator) ?KeyValue(Key, Value) {
                 if (self.* == null)
                     return null;
 
@@ -395,7 +395,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
 
                 var old: ?KeyValue(Key, Value) = null;
                 if (h.rnode == null) {
-                    // std.debug.print("delete_max_node: {}\n", .{h.value});
+                    // std.debug.print("delete_max: {}\n", .{h.value});
                     old = key_value.make(h.key, h.value);
                     assert(h.lnode == null);
                     allocator.destroy(h);
@@ -411,7 +411,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                 if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
                     h = h.move_redright();
 
-                old = delete_max_node(&h.rnode, allocator);
+                old = Node.delete_max(&h.rnode, allocator);
                 self.* = h.fixup();
                 return old;
             }
@@ -493,7 +493,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         pub fn delete_max(self: *Self) ?KeyValue(Key, Value) {
             var old: ?KeyValue(Key, Value) = null;
             Node.check_inv(self.root);
-            old = Node.delete_max_node(&self.root, self.allocator);
+            old = Node.delete_max(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
