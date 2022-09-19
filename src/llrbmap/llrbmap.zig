@@ -269,7 +269,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                 return h;
             }
 
-            fn delete_node(self: *?*Node, allocator: Allocator, key: *const Key) ?Value {
+            fn delete(self: *?*Node, allocator: Allocator, key: *const Key) ?Value {
                 if (self.* == null)
                     return null;
 
@@ -283,7 +283,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                     }
                     if (!isRed(h.lnode) and !isRed(h.lnode.?.lnode))
                         h = h.move_redleft();
-                    old = delete_node(&h.lnode, allocator, key);
+                    old = Node.delete(&h.lnode, allocator, key);
                 } else {
                     if (isRed(h.lnode)) {
                         // right-leaning 3node
@@ -328,7 +328,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                         h.key = kv[0];
                         h.value = kv[1];
                     } else {
-                        old = delete_node(&h.rnode, allocator, key);
+                        old = Node.delete(&h.rnode, allocator, key);
                     }
                 }
                 self.* = h.fixup();
@@ -462,7 +462,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         pub fn delete(self: *Self, key: *const Key) ?Value {
             Node.check_inv(self.root);
 
-            const old = Node.delete_node(&self.root, self.allocator, key);
+            const old = Node.delete(&self.root, self.allocator, key);
             if (self.root) |sroot|
                 sroot.color = .Black;
 

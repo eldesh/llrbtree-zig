@@ -265,7 +265,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
                 return h;
             }
 
-            fn delete_node(self: *?*Node, allocator: Allocator, value: *const T) ?T {
+            fn delete(self: *?*Node, allocator: Allocator, value: *const T) ?T {
                 if (self.* == null)
                     return null;
 
@@ -279,7 +279,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
                     }
                     if (!isRed(h.lnode) and !isRed(h.lnode.?.lnode))
                         h = h.move_redleft();
-                    old = delete_node(&h.lnode, allocator, value);
+                    old = Node.delete(&h.lnode, allocator, value);
                 } else {
                     if (isRed(h.lnode)) {
                         // right-leaning 3node
@@ -322,7 +322,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
                         old = h.value;
                         h.value = delete_min_node(&h.rnode, allocator).?;
                     } else {
-                        old = delete_node(&h.rnode, allocator, value);
+                        old = Node.delete(&h.rnode, allocator, value);
                     }
                 }
                 self.* = h.fixup();
@@ -460,7 +460,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         pub fn delete(self: *Self, value: *const T) ?T {
             Node.check_inv(self.root);
 
-            const old = Node.delete_node(&self.root, self.allocator, value);
+            const old = Node.delete(&self.root, self.allocator, value);
             if (self.root) |sroot|
                 sroot.color = .Black;
 
