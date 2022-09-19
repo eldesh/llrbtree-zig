@@ -427,26 +427,25 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
 
         pub fn destroy(self: *Self) void {
             Node.check_inv(self.root);
-
             Node.destroy(self.root, self.allocator);
             self.root = null;
         }
 
-        /// Returns an iterator which enumerates all values of the tree.
+        /// Returns an iterator which enumerates all key/value pairs of the tree.
         ///
         /// # Details
-        /// Returns an iterator which enumerates all values of the tree.
-        /// The values are enumerated by asceding order.
+        /// Returns an iterator which enumerates all key/value paris of the tree.
+        /// The keys of the paris are enumerated by asceding order.
         /// Also, the tree must no be modified while the iterator is alive.
         pub fn iter(self: *const Self) Allocator.Error!iters.Iter(Key, Value) {
             return iters.Iter(Key, Value).new(self.root, self.allocator);
         }
 
-        /// Insert the value `value` to the tree `self`.
+        /// Insert the `key` and an associated `value` to the tree `self`.
         ///
         /// # Details
-        /// Insert the value `value` to the tree `self`.
-        /// If a value equals to `value` exists in the tree, the old value is replaced with the new value.
+        /// Insert the `key` and an associated `value` to the tree `self`.
+        /// If the key exists in the tree, the old value is replaced with the new value.
         /// And the old value is returned.
         /// Otherwise, `null` is returned.
         pub fn insert(self: *Self, key: Key, value: Value) Allocator.Error!?Value {
@@ -474,10 +473,10 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
             return old;
         }
 
-        /// Delete the minimum element from tree
+        /// Delete the key/value pair with the minimum key from the tree
         ///
         /// # Details
-        /// Delete the minimum element from tree `self`, and returns it.
+        /// Delete the key/value pair with the minimum key from the tree `self`, and returns the pair.
         /// And `null` is returned for empty tree.
         pub fn delete_min(self: *Self) ?KeyValue(Key, Value) {
             var old: ?KeyValue(Key, Value) = null;
@@ -489,10 +488,10 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
             return old;
         }
 
-        /// Delete the maximum element from tree
+        /// Delete the key/value pair with the maximum key from the tree
         ///
         /// # Details
-        /// Delete the maximum element from tree `self`, and returns it.
+        /// Delete the key/value pair with the maximum key from the tree `self`, and returns the pair.
         /// And `null` is returned for empty tree.
         pub fn delete_max(self: *Self) ?KeyValue(Key, Value) {
             var old: ?KeyValue(Key, Value) = null;
