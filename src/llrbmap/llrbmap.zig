@@ -120,12 +120,12 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                 }
             }
 
-            pub fn contains(self: ?*const Node, key: *const Key) bool {
+            pub fn contains_key(self: ?*const Node, key: *const Key) bool {
                 if (self) |n| {
                     return switch (Con.PartialOrd.on(*const Key)(key, &n.key).?) {
-                        .lt => Node.contains(n.lnode, key),
+                        .lt => Node.contains_key(n.lnode, key),
                         .eq => true,
-                        .gt => Node.contains(n.rnode, key),
+                        .gt => Node.contains_key(n.rnode, key),
                     };
                 }
                 return false;
@@ -502,7 +502,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
 
         /// Checks to see if it contains a value for the specified `key`.
         pub fn contains_key(self: *const Self, key: *const Key) bool {
-            return Node.contains(self.root, key);
+            return Node.contains_key(self.root, key);
         }
 
         /// Checks whether a node contains a value equal to `value` and returns a pointer to that value.
