@@ -2,15 +2,16 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Con = @import("basis_concept");
 const node_color = @import("../node_color.zig");
+const key_value = @import("./key_value.zig");
 // pub const iters = @import("./iter.zig");
 const math = std.math;
 
 const Allocator = std.mem.Allocator;
-const Tuple = std.meta.Tuple;
 
 const assert = std.debug.assert;
 
 const NodeColor = node_color.NodeColor;
+pub const KeyValue = key_value.KeyValue;
 
 pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
     comptime assert(Con.isPartialOrd(K));
@@ -323,7 +324,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                         // const rm = h.rnode.?.min();
                         // h.key = rm.key;
                         old = h.value;
-                        const kv = Node.delete_min(&h.rnode, allocator).?;
+                        const kv = Node.delete_min(&h.rnode, allocator).?.toTuple();
                         h.key = kv[0];
                         h.value = kv[1];
                     } else {
@@ -339,15 +340,15 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
             // # Details
             // Delete the min value from the tree `self` and returns the removed value.
             // If the tree is empty, `null` is returned.
-            fn delete_min(self: *?*Node, allocator: Allocator) ?Tuple(&[_]type{ Key, Value }) {
+            fn delete_min(self: *?*Node, allocator: Allocator) ?KeyValue(Key, Value) {
                 if (self.* == null)
                     return null;
 
                 var h: *Node = self.*.?;
-                var old: ?Tuple(&[_]type{ Key, Value }) = null;
+                var old: ?KeyValue(Key, Value) = null;
                 if (h.lnode == null) {
                     // std.debug.print("delete_min: lnode=null: {}\n", .{h.value});
-                    old = .{ h.key, h.value };
+                    old = key_value.make(h.key, h.value);
                     assert(h.rnode == null);
                     allocator.destroy(h);
                     self.* = null;
@@ -380,7 +381,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
             //
             // Move red link down/right to tree.
             // Because removing a black link breaks balance.
-            fn delete_max_node(self: *?*Node, allocator: Allocator) ?Tuple(&[_]type{ Key, Value }) {
+            fn delete_max_node(self: *?*Node, allocator: Allocator) ?KeyValue(Key, Value) {
                 if (self.* == null)
                     return null;
 
@@ -392,10 +393,10 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                 // 2 red nodes are not contiguous
                 assert(!isRed(h.lnode));
 
-                var old: ?Tuple(&[_]type{ Key, Value }) = null;
+                var old: ?KeyValue(Key, Value) = null;
                 if (h.rnode == null) {
                     // std.debug.print("delete_max_node: {}\n", .{h.value});
-                    old = .{ h.key, h.value };
+                    old = key_value.make(h.key, h.value);
                     assert(h.lnode == null);
                     allocator.destroy(h);
                     self.* = null;
@@ -474,8 +475,8 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// # Details
         /// Delete the minimum element from tree `self`, and returns it.
         /// And `null` is returned for empty tree.
-        pub fn delete_min(self: *Self) ?Tuple(&[_]type{ Key, Value }) {
-            var old: ?Tuple(&[_]type{ Key, Value }) = null;
+        pub fn delete_min(self: *Self) ?KeyValue(Key, Value) {
+            var old: ?KeyValue(Key, Value) = null;
             Node.check_inv(self.root);
             old = Node.delete_min(&self.root, self.allocator);
             if (self.root) |root|
@@ -489,8 +490,8 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// # Details
         /// Delete the maximum element from tree `self`, and returns it.
         /// And `null` is returned for empty tree.
-        pub fn delete_max(self: *Self) ?Tuple(&[_]type{ Key, Value }) {
-            var old: ?Tuple(&[_]type{ Key, Value }) = null;
+        pub fn delete_max(self: *Self) ?KeyValue(Key, Value) {
+            var old: ?KeyValue(Key, Value) = null;
             Node.check_inv(self.root);
             old = Node.delete_max_node(&self.root, self.allocator);
             if (self.root) |root|
@@ -650,8 +651,8 @@ test "delete_min" {
             _ = p;
             if (tree.delete_min()) |rm| {
                 // if (p) std.debug.print("v: {}th... {}\n", .{ i, rm });
-                assert(min <= rm[0]);
-                min = rm[0];
+                assert(min <= rm.key().*);
+                min = rm.key().*;
             } else {
                 // if (p) std.debug.print("v: {}th... none\n", .{i});
             }
@@ -694,8 +695,8 @@ test "delete_max" {
             // const p = @mod(i, num / 10) == 0;
             if (tree.delete_max()) |rm| {
                 // if (p) std.debug.print("v: {}th... {}\n", .{ i, rm });
-                assert(rm[0] <= max);
-                max = rm[0];
+                assert(rm.key().* <= max);
+                max = rm.key().*;
             } else {
                 // if (p) std.debug.print("v: {}th... none\n", .{i});
             }
