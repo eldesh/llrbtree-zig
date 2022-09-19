@@ -26,6 +26,8 @@ pub const Self = @This();
 /// [^Sedgewick2008]: Robert Sedgewick, Left-leaning Red-Black Trees, 2008 https://sedgewick.io/wp-content/themes/sedgewick/papers/2008LLRB.pdf
 pub const llrbset = @import("./llrbset/llrbset.zig");
 
+pub const llrbmap = @import("./llrbmap/llrbmap.zig");
+
 test {
     const std = @import("std");
     std.testing.refAllDecls(@This());
