@@ -1,6 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const Con = @import("basis_concept");
+const node_color = @import("../node_color.zig");
 // pub const iters = @import("./iter.zig");
 
 const math = std.math;
@@ -9,17 +10,7 @@ const Allocator = std.mem.Allocator;
 
 const assert = std.debug.assert;
 
-const NodeColor = enum {
-    Red,
-    Black,
-
-    pub fn flip(self: *@This()) void {
-        switch (self.*) {
-            .Red => self.* = .Black,
-            .Black => self.* = .Red,
-        }
-    }
-};
+const NodeColor = node_color.NodeColor;
 
 pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
     comptime assert(Con.isPartialOrd(K));
