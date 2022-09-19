@@ -3,11 +3,11 @@ const std = @import("std");
 const Tuple = std.meta.Tuple;
 
 /// A type of key/value pair.
-pub fn KeyValue(comptime Key: type, comptime Value: type) type {
+pub fn KeyValue(comptime K: type, comptime V: type) type {
     return struct {
         pub const Self: type = @This();
-        pub const Key: type = Key;
-        pub const Value: type = Value;
+        pub const Key: type = K;
+        pub const Value: type = V;
 
         _key: Key,
         _value: Value,
