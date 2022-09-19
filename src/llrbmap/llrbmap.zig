@@ -3,7 +3,7 @@ const builtin = @import("builtin");
 const Con = @import("basis_concept");
 const node_color = @import("../node_color.zig");
 const key_value = @import("./key_value.zig");
-// pub const iters = @import("./iter.zig");
+pub const iters = @import("./iter.zig");
 const math = std.math;
 
 const Allocator = std.mem.Allocator;
@@ -33,12 +33,19 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         pub const Node = struct {
             // color of the incoming link (from parent)
             color: NodeColor,
-            key: Key,
-            value: Value,
+            key_value: KeyValue(Key, Value),
             // left child node
             lnode: ?*Node,
             // right child node
             rnode: ?*Node,
+
+            fn get_key(self: *const @This()) *const Key {
+                return self.key_value.key();
+            }
+
+            fn get_value(self: *const @This()) *const Value {
+                return self.key_value.value();
+            }
 
             fn check_inv(self: ?*@This()) void {
                 // enabled only when Debug mode
@@ -104,7 +111,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
 
             fn new(alloc: Allocator, key: Key, value: Value, lnode: ?*Node, rnode: ?*Node) Allocator.Error!*Node {
                 var node = try alloc.create(Node);
-                node.* = .{ .color = .Red, .key = key, .value = value, .lnode = lnode, .rnode = rnode };
+                node.* = .{ .color = .Red, .key_value = key_value.make(key, value), .lnode = lnode, .rnode = rnode };
                 Node.check_inv(node);
                 return node;
             }
@@ -122,7 +129,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
 
             pub fn contains_key(self: ?*const Node, key: *const Key) bool {
                 if (self) |n| {
-                    return switch (Con.PartialOrd.on(*const Key)(key, &n.key).?) {
+                    return switch (Con.PartialOrd.on(*const Key)(key, n.get_key()).?) {
                         .lt => Node.contains_key(n.lnode, key),
                         .eq => true,
                         .gt => Node.contains_key(n.rnode, key),
@@ -133,9 +140,9 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
 
             pub fn get(self: ?*const Node, key: *const Key) ?*const Value {
                 if (self) |n| {
-                    return switch (Con.PartialOrd.on(*const Key)(key, &n.key).?) {
+                    return switch (Con.PartialOrd.on(*const Key)(key, n.get_key()).?) {
                         .lt => Node.get(n.lnode, key),
-                        .eq => &n.value,
+                        .eq => n.get_value(),
                         .gt => Node.get(n.rnode, key),
                     };
                 }
@@ -217,12 +224,11 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                 check_inv(node);
 
                 var old: ?Value = null;
-                switch (Con.PartialOrd.on(*const Key)(&key, &node.key).?) {
+                switch (Con.PartialOrd.on(*const Key)(&key, node.get_key()).?) {
                     .lt => old = try insert_node(&node.lnode, allocator, key, value),
                     .eq => {
-                        old = node.value;
-                        node.key = key;
-                        node.value = value;
+                        old = node.key_value.toTuple()[1];
+                        node.key_value = key_value.make(key, value);
                     },
                     .gt => old = try insert_node(&node.rnode, allocator, key, value),
                 }
@@ -276,7 +282,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                 var h = self.*.?;
                 // removed value if it found
                 var old: ?Value = null;
-                if (Con.PartialOrd.on(*const Key)(key, &h.key).?.compare(.lt)) {
+                if (Con.PartialOrd.on(*const Key)(key, h.get_key()).?.compare(.lt)) {
                     // not found the value `value.*`
                     if (h.lnode == null) {
                         return null;
@@ -295,9 +301,9 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                     // Therefore `h` is not right rotated.
 
                     // Found a node to be deleted on the leaf
-                    if (Con.PartialOrd.on(*const Key)(key, &h.key).?.compare(.eq) and h.rnode == null) {
+                    if (Con.PartialOrd.on(*const Key)(key, h.get_key()).?.compare(.eq) and h.rnode == null) {
                         assert(h.lnode == null);
-                        old = h.value;
+                        old = h.key_value.toTuple()[1];
                         allocator.destroy(h);
                         self.* = null;
                         return old;
@@ -313,20 +319,18 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                         // These conditions are able to be represented as formally:
                         // `(value != h.value \/ rnode != null) /\ rnode = null`
                         // Then the condition `value != h.value` is satisfied.
-                        assert(Con.PartialOrd.on(*const Key)(key, &h.key).?.compare(.neq));
+                        assert(Con.PartialOrd.on(*const Key)(key, h.get_key()).?.compare(.neq));
                         return null;
                     }
 
                     if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
                         h = h.move_redright();
 
-                    if (Con.PartialOrd.on(*const Key)(key, &h.key).?.compare(.eq)) {
+                    if (Con.PartialOrd.on(*const Key)(key, h.get_key()).?.compare(.eq)) {
                         // const rm = h.rnode.?.min();
                         // h.key = rm.key;
-                        old = h.value;
-                        const kv = Node.delete_min(&h.rnode, allocator).?.toTuple();
-                        h.key = kv[0];
-                        h.value = kv[1];
+                        old = h.key_value.toTuple()[1];
+                        h.key_value = Node.delete_min(&h.rnode, allocator).?;
                     } else {
                         old = Node.delete(&h.rnode, allocator, key);
                     }
@@ -348,7 +352,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                 var old: ?KeyValue(Key, Value) = null;
                 if (h.lnode == null) {
                     // std.debug.print("delete_min: lnode=null: {}\n", .{h.value});
-                    old = key_value.make(h.key, h.value);
+                    old = h.key_value;
                     assert(h.rnode == null);
                     allocator.destroy(h);
                     self.* = null;
@@ -396,7 +400,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                 var old: ?KeyValue(Key, Value) = null;
                 if (h.rnode == null) {
                     // std.debug.print("delete_max: {}\n", .{h.value});
-                    old = key_value.make(h.key, h.value);
+                    old = h.key_value;
                     assert(h.lnode == null);
                     allocator.destroy(h);
                     self.* = null;
@@ -434,9 +438,9 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Returns an iterator which enumerates all values of the tree.
         /// The values are enumerated by asceding order.
         /// Also, the tree must no be modified while the iterator is alive.
-        // pub fn iter(self: *const Self) Allocator.Error!iters.Iter(Item) {
-        //     return iters.Iter(Item).new(self.root, self.allocator);
-        // }
+        pub fn iter(self: *const Self) Allocator.Error!iters.Iter(Key, Value) {
+            return iters.Iter(Key, Value).new(self.root, self.allocator);
+        }
 
         /// Insert the value `value` to the tree `self`.
         ///
@@ -756,41 +760,49 @@ test "insert / delete" {
     }
 }
 
-// test "values" {
-//     const testing = std.testing;
-//     {
-//         var tree = LLRBTreeMap(i32,i32).new(testing.allocator);
-//         defer tree.destroy();
-//
-//         var i: i32 = 0;
-//         while (i <= 5) : (i += 1)
-//             try testing.expectEqual(try tree.insert(i), null);
-//
-//         var iter = try tree.iter();
-//         defer iter.destroy();
-//
-//         // values are enumerated by asceding order
-//         try testing.expectEqual(iter.next().?.*, 0);
-//         try testing.expectEqual(iter.next().?.*, 1);
-//         try testing.expectEqual(iter.next().?.*, 2);
-//         try testing.expectEqual(iter.next().?.*, 3);
-//         try testing.expectEqual(iter.next().?.*, 4);
-//         try testing.expectEqual(iter.next().?.*, 5);
-//         try testing.expectEqual(iter.next(), null);
-//     }
-//     {
-//         var tree = LLRBTreeSet(i32).new(testing.allocator);
-//         defer tree.destroy();
-//
-//         var i: i32 = 0;
-//         while (i <= 4096) : (i += 1)
-//             try testing.expectEqual(try tree.insert(i), null);
-//
-//         var iter = try tree.iter();
-//         defer iter.destroy();
-//         while (iter.next()) |item| {
-//             _ = item;
-//             // std.debug.print("item: {}\n", .{item.*});
-//         }
-//     }
-// }
+test "values" {
+    const testing = std.testing;
+    const KV = key_value.KeyValue;
+    {
+        const Tree = LLRBTreeMap(i32, i32);
+        const kv = struct {
+            // specialized to the Key, Value types
+            fn constructor(k: Tree.Key, v: Tree.Value) KV(Tree.Key, Tree.Value) {
+                return key_value.make(k, v);
+            }
+        }.constructor;
+        var tree = Tree.new(testing.allocator);
+        defer tree.destroy();
+
+        var i: i32 = 0;
+        while (i <= 5) : (i += 1)
+            try testing.expectEqual(try tree.insert(i, i), null);
+
+        var iter = try tree.iter();
+        defer iter.destroy();
+
+        // values are enumerated by asceding order
+        try testing.expectEqual(iter.next().?.*, kv(0, 0));
+        try testing.expectEqual(iter.next().?.*, kv(1, 1));
+        try testing.expectEqual(iter.next().?.*, kv(2, 2));
+        try testing.expectEqual(iter.next().?.*, kv(3, 3));
+        try testing.expectEqual(iter.next().?.*, kv(4, 4));
+        try testing.expectEqual(iter.next().?.*, kv(5, 5));
+        try testing.expectEqual(iter.next(), null);
+    }
+    {
+        var tree = LLRBTreeMap(i32, i32).new(testing.allocator);
+        defer tree.destroy();
+
+        var i: i32 = 0;
+        while (i <= 4096) : (i += 1)
+            try testing.expectEqual(try tree.insert(i, i), null);
+
+        var iter = try tree.iter();
+        defer iter.destroy();
+        while (iter.next()) |item| {
+            _ = item;
+            // std.debug.print("item: {}\n", .{item.*});
+        }
+    }
+}
