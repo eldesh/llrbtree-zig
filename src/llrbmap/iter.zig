@@ -2,9 +2,11 @@ const std = @import("std");
 const Con = @import("basis_concept");
 const llrbmap = @import("./llrbmap.zig");
 const key_value = @import("./key_value.zig");
+const node = @import("../node.zig");
 
 const Allocator = std.mem.Allocator;
 const KeyValue = key_value.KeyValue;
+const Node = node.Node;
 
 /// An iterator enumerates all values of a `LLRBTreeSet` by asceding order.
 ///
@@ -43,23 +45,21 @@ pub fn Iter(comptime K: type, comptime V: type) type {
             }
         };
 
-        const Node: type = llrbmap.LLRBTreeMap(K, V).Node;
-
-        root: ?*const Node,
+        root: ?*const Node(K, V),
         // iteration stack
-        stack: []*const Node,
+        stack: []*const Node(K, V),
         lrstack: []State,
         // index of stack top
         st: i32,
         allocator: Allocator,
 
-        pub fn new(root: ?*const Node, allocator: Allocator) Allocator.Error!Self {
-            const h = Node.black_height(root);
-            var stack = try allocator.alloc(*const Node, h * 2);
+        pub fn new(root: ?*const Node(K, V), allocator: Allocator) Allocator.Error!Self {
+            const h = Node(K, V).black_height(root);
+            var stack = try allocator.alloc(*const Node(K, V), h * 2);
             var lrstack = try allocator.alloc(State, h * 2);
             var self = Self{ .root = root, .stack = stack, .lrstack = lrstack, .st = -1, .allocator = allocator };
-            if (root) |node|
-                self.push_stack(node);
+            if (root) |n|
+                self.push_stack(n);
             return self;
         }
 
@@ -67,33 +67,33 @@ pub fn Iter(comptime K: type, comptime V: type) type {
             return @intCast(usize, self.st);
         }
 
-        fn peek_stack(self: *const Self) *const Node {
+        fn peek_stack(self: *const Self) *const Node(K, V) {
             return self.stack[@intCast(usize, self.st)];
         }
 
-        fn push_stack(self: *Self, node: *const Node) void {
+        fn push_stack(self: *Self, n: *const Node(K, V)) void {
             self.st += 1;
-            self.stack[self.stack_top()] = node;
+            self.stack[self.stack_top()] = n;
             self.lrstack[self.stack_top()] = State.Left;
         }
 
         pub fn next(self: *Self) ?Item {
             while (0 <= self.st) {
                 // std.debug.print("st: {}\n", .{self.st});
-                const node = self.peek_stack();
+                const n = self.peek_stack();
                 switch (self.lrstack[self.stack_top()].next()) {
                     State.Left => {
-                        if (node.lnode) |lnode| {
+                        if (n.lnode) |lnode| {
                             // std.debug.print("L:{}\n", .{self.st});
                             self.push_stack(lnode);
                         }
                     },
                     State.Value => {
-                        // std.debug.print("V:{}\n", .{node.value});
-                        return &node.key_value;
+                        // std.debug.print("V:{}\n", .{n.value});
+                        return n.get_key_value();
                     },
                     State.Right => {
-                        if (node.rnode) |rnode| {
+                        if (n.rnode) |rnode| {
                             // std.debug.print("R:{}\n", .{self.st});
                             self.push_stack(rnode);
                         }
