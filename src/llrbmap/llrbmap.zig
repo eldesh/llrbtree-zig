@@ -12,6 +12,14 @@ const assert = std.debug.assert;
 const NodeColor = node_color.NodeColor;
 pub const KeyValue = key_value.KeyValue;
 
+/// A key/value container.
+///
+/// # Details
+/// This function returns that a key/value container using Left-leaning Red-Black Tree algorithm.
+/// All values are associated for each keys, and all key/value pairs are stored based on order relation of the keys.
+///
+/// # Requirements
+/// `K` is a type and that must have an order relation defined by `Con.isPartialOrd`.
 pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
     comptime assert(Con.isPartialOrd(K));
 

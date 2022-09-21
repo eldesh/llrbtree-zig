@@ -13,6 +13,14 @@ const assert = std.debug.assert;
 
 const NodeColor = node_color.NodeColor;
 
+/// A value set container.
+///
+/// # Details
+/// This function returns that a value container using Left-leaning Red-Black Tree algorithm.
+/// All values are stored based on it's order relation.
+///
+/// # Requirements
+/// `T` is a type and that must have an order relation defined by `Con.isPartialOrd`.
 pub fn LLRBTreeSet(comptime T: type) type {
     comptime assert(Con.isPartialOrd(T));
 
