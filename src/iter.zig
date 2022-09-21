@@ -1,11 +1,8 @@
 const std = @import("std");
 const Con = @import("basis_concept");
-const llrbmap = @import("./llrbmap.zig");
-const key_value = @import("./key_value.zig");
 const node = @import("./node.zig");
 
 const Allocator = std.mem.Allocator;
-const KeyValue = key_value.KeyValue;
 const Node = node.Node;
 
 /// An iterator enumerates all values of a `LLRBTreeSet` by asceding order.
@@ -26,10 +23,10 @@ const Node = node.Node;
 ///   _ = item;
 /// }
 /// ```
-pub fn Iter(comptime K: type, comptime V: type) type {
+pub fn Iter(comptime T: type) type {
     return struct {
         pub const Self: type = @This();
-        pub const Item: type = *const KeyValue(K, V);
+        pub const Item: type = *const T;
 
         // States of depth first iteration
         const State = enum(u8) {
@@ -90,7 +87,7 @@ pub fn Iter(comptime K: type, comptime V: type) type {
                     },
                     State.Value => {
                         // std.debug.print("V:{}\n", .{n.value});
-                        return n.get_item();
+                        return n.get_value();
                     },
                     State.Right => {
                         if (n.rnode) |rnode| {

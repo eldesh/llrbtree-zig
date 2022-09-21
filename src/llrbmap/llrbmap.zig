@@ -2,7 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Con = @import("basis_concept");
 const node_color = @import("../node_color.zig");
-const node = @import("../node.zig");
+const node = @import("./node.zig");
 const key_value = @import("./key_value.zig");
 pub const iters = @import("./iter.zig");
 const math = std.math;
@@ -22,10 +22,11 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         pub const Key = K;
         pub const Value = V;
 
+        // tree implementation
+        const Node = node.Node(Key, Value);
+
         allocator: Allocator,
         root: ?*Node,
-
-        const Node = node.Node(Key, Value);
 
         pub fn new(allocator: Allocator) Self {
             return .{ .allocator = allocator, .root = null };
@@ -56,10 +57,10 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Otherwise, `null` is returned.
         pub fn insert(self: *Self, key: Key, value: Value) Allocator.Error!?Value {
             Node.check_inv(self.root);
-            const old = try Node.insert_node(&self.root, self.allocator, key, value);
+            const oldopt = try Node.insert_node(&self.root, self.allocator, key_value.make(key, value));
             self.root.?.color = .Black;
             Node.check_inv(self.root);
-            return old;
+            return if (oldopt) |old| old.toTuple()[1] else null;
         }
 
         /// Delete a node for the specified `key`.
@@ -127,7 +128,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Checks whether a node contains a value equal to `value` and returns a pointer to that value.
         /// If not found, returns `null`.
         pub fn get(self: *const Self, key: *const Key) ?*const Value {
-            return Node.get(self.root, key);
+            return if (Node.get(self.root, key)) |kv| kv.value() else null;
         }
     };
 }

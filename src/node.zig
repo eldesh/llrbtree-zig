@@ -17,26 +17,22 @@ pub const NodeError = error{
     PerfectBlackBalance,
 };
 
-pub fn Node(comptime Key: type, comptime Value: type) type {
+pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: type) type {
     return struct {
+        pub const Self = @This();
+        pub const Item = T;
+        pub usingnamespace Derive(@This());
+
         // color of the incoming link (from parent)
         color: NodeColor,
-        key_value: KeyValue(Key, Value),
+        item: T,
         // left child node
         lnode: ?*@This(),
         // right child node
         rnode: ?*@This(),
 
-        pub fn get_key(self: *const @This()) *const Key {
-            return self.key_value.key();
-        }
-
-        pub fn get_value(self: *const @This()) *const Value {
-            return self.key_value.value();
-        }
-
-        pub fn get_key_value(self: *const @This()) *const KeyValue(Key, Value) {
-            return &self.key_value;
+        pub fn get_item(self: *const @This()) *const T {
+            return &self.item;
         }
 
         pub fn check_inv(self: ?*@This()) void {
@@ -101,9 +97,9 @@ pub fn Node(comptime Key: type, comptime Value: type) type {
                 try lnode.check_perfect_black_balance();
         }
 
-        pub fn new(alloc: Allocator, key: Key, value: Value, lnode: ?*@This(), rnode: ?*@This()) Allocator.Error!*@This() {
+        pub fn new(alloc: Allocator, item: T, lnode: ?*@This(), rnode: ?*@This()) Allocator.Error!*@This() {
             var node = try alloc.create(@This());
-            node.* = .{ .color = .Red, .key_value = key_value.make(key, value), .lnode = lnode, .rnode = rnode };
+            node.* = .{ .color = .Red, .item = item, .lnode = lnode, .rnode = rnode };
             check_inv(node);
             return node;
         }
@@ -130,11 +126,11 @@ pub fn Node(comptime Key: type, comptime Value: type) type {
             return false;
         }
 
-        pub fn get(self: ?*const @This(), key: *const Key) ?*const Value {
+        pub fn get(self: ?*const @This(), key: *const Key) ?*const T {
             if (self) |n| {
                 return switch (Con.PartialOrd.on(*const Key)(key, n.get_key()).?) {
                     .lt => get(n.lnode, key),
-                    .eq => n.get_value(),
+                    .eq => &n.item,
                     .gt => get(n.rnode, key),
                 };
             }
@@ -206,23 +202,23 @@ pub fn Node(comptime Key: type, comptime Value: type) type {
             return h;
         }
 
-        pub fn insert_node(self: *?*@This(), allocator: Allocator, key: Key, value: Value) Allocator.Error!?Value {
+        pub fn insert_node(self: *?*@This(), allocator: Allocator, item: T) Allocator.Error!?T {
             if (self.* == null) {
-                self.* = try @This().new(allocator, key, value, null, null);
+                self.* = try @This().new(allocator, item, null, null);
                 return null;
             }
 
             var node = self.*.?;
             check_inv(node);
 
-            var old: ?Value = null;
-            switch (Con.PartialOrd.on(*const Key)(&key, node.get_key()).?) {
-                .lt => old = try insert_node(&node.lnode, allocator, key, value),
+            var old: ?T = null;
+            switch (Con.PartialOrd.on(*const Key)(item.key(), node.get_key()).?) {
+                .lt => old = try insert_node(&node.lnode, allocator, item),
                 .eq => {
-                    old = node.key_value.toTuple()[1];
-                    node.key_value = key_value.make(key, value);
+                    old = node.item;
+                    node.item = item;
                 },
-                .gt => old = try insert_node(&node.rnode, allocator, key, value),
+                .gt => old = try insert_node(&node.rnode, allocator, item),
             }
 
             self.* = node.fixup();
@@ -267,13 +263,13 @@ pub fn Node(comptime Key: type, comptime Value: type) type {
             return h;
         }
 
-        pub fn delete(self: *?*@This(), allocator: Allocator, key: *const Key) ?KeyValue(Key, Value) {
+        pub fn delete(self: *?*@This(), allocator: Allocator, key: *const Key) ?T {
             if (self.* == null)
                 return null;
 
             var h = self.*.?;
             // removed value if it found
-            var old: ?KeyValue(Key, Value) = null;
+            var old: ?T = null;
             if (Con.PartialOrd.on(*const Key)(key, h.get_key()).?.compare(.lt)) {
                 // not found the value `value.*`
                 if (h.lnode == null) {
@@ -281,7 +277,7 @@ pub fn Node(comptime Key: type, comptime Value: type) type {
                 }
                 if (!isRed(h.lnode) and !isRed(h.lnode.?.lnode))
                     h = h.move_redleft();
-                old = @This().delete(&h.lnode, allocator, key);
+                old = delete(&h.lnode, allocator, key);
             } else {
                 if (isRed(h.lnode)) {
                     // right-leaning 3node
@@ -295,7 +291,7 @@ pub fn Node(comptime Key: type, comptime Value: type) type {
                 // Found a node to be deleted on the leaf
                 if (Con.PartialOrd.on(*const Key)(key, h.get_key()).?.compare(.eq) and h.rnode == null) {
                     assert(h.lnode == null);
-                    old = h.key_value;
+                    old = h.item;
                     allocator.destroy(h);
                     self.* = null;
                     return old;
@@ -321,10 +317,10 @@ pub fn Node(comptime Key: type, comptime Value: type) type {
                 if (Con.PartialOrd.on(*const Key)(key, h.get_key()).?.compare(.eq)) {
                     // const rm = h.rnode.?.min();
                     // h.key = rm.key;
-                    old = h.key_value;
-                    h.key_value = @This().delete_min(&h.rnode, allocator).?;
+                    old = h.item;
+                    h.item = delete_min(&h.rnode, allocator).?;
                 } else {
-                    old = @This().delete(&h.rnode, allocator, key);
+                    old = delete(&h.rnode, allocator, key);
                 }
             }
             self.* = h.fixup();
@@ -336,15 +332,15 @@ pub fn Node(comptime Key: type, comptime Value: type) type {
         // # Details
         // Delete the min value from the tree `self` and returns the removed value.
         // If the tree is empty, `null` is returned.
-        pub fn delete_min(self: *?*@This(), allocator: Allocator) ?KeyValue(Key, Value) {
+        pub fn delete_min(self: *?*@This(), allocator: Allocator) ?T {
             if (self.* == null)
                 return null;
 
             var h: *@This() = self.*.?;
-            var old: ?KeyValue(Key, Value) = null;
+            var old: ?T = null;
             if (h.lnode == null) {
                 // std.debug.print("delete_min: lnode=null: {}\n", .{h.value});
-                old = h.key_value;
+                old = h.item;
                 assert(h.rnode == null);
                 allocator.destroy(h);
                 self.* = null;
@@ -377,7 +373,7 @@ pub fn Node(comptime Key: type, comptime Value: type) type {
         //
         // Move red link down/right to tree.
         // Because removing a black link breaks balance.
-        pub fn delete_max(self: *?*@This(), allocator: Allocator) ?KeyValue(Key, Value) {
+        pub fn delete_max(self: *?*@This(), allocator: Allocator) ?T {
             if (self.* == null)
                 return null;
 
@@ -389,10 +385,10 @@ pub fn Node(comptime Key: type, comptime Value: type) type {
             // 2 red nodes are not contiguous
             assert(!isRed(h.lnode));
 
-            var old: ?KeyValue(Key, Value) = null;
+            var old: ?T = null;
             if (h.rnode == null) {
                 // std.debug.print("delete_max: {}\n", .{h.value});
-                old = h.key_value;
+                old = h.item;
                 assert(h.lnode == null);
                 allocator.destroy(h);
                 self.* = null;
