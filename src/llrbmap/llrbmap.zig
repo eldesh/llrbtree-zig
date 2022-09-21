@@ -1,11 +1,9 @@
 const std = @import("std");
-const builtin = @import("builtin");
 const Con = @import("basis_concept");
 const node_color = @import("../node_color.zig");
 const node = @import("./node.zig");
 const key_value = @import("./key_value.zig");
 pub const iters = @import("./iter.zig");
-const math = std.math;
 
 const Allocator = std.mem.Allocator;
 

@@ -3,6 +3,7 @@ const Con = @import("basis_concept");
 const llrbset = @import("./llrbset.zig");
 
 const Allocator = std.mem.Allocator;
+const Node = @import("./node.zig").Node;
 
 /// An iterator enumerates all values of a `LLRBTreeSet` by asceding order.
 ///
@@ -41,19 +42,17 @@ pub fn Iter(comptime V: type) type {
             }
         };
 
-        const Node: type = llrbset.LLRBTreeSet(V).Node;
-
-        root: ?*const Node,
+        root: ?*const Node(V),
         // iteration stack
-        stack: []*const Node,
+        stack: []*const Node(V),
         lrstack: []State,
         // index of stack top
         st: i32,
         allocator: Allocator,
 
-        pub fn new(root: ?*const Node, allocator: Allocator) Allocator.Error!Self {
-            const h = Node.black_height(root);
-            var stack = try allocator.alloc(*const Node, h * 2);
+        pub fn new(root: ?*const Node(V), allocator: Allocator) Allocator.Error!Self {
+            const h = Node(V).black_height(root);
+            var stack = try allocator.alloc(*const Node(V), h * 2);
             var lrstack = try allocator.alloc(State, h * 2);
             var self = Self{ .root = root, .stack = stack, .lrstack = lrstack, .st = -1, .allocator = allocator };
             if (root) |node|
@@ -65,11 +64,11 @@ pub fn Iter(comptime V: type) type {
             return @intCast(usize, self.st);
         }
 
-        fn peek_stack(self: *const Self) *const Node {
+        fn peek_stack(self: *const Self) *const Node(V) {
             return self.stack[@intCast(usize, self.st)];
         }
 
-        fn push_stack(self: *Self, node: *const Node) void {
+        fn push_stack(self: *Self, node: *const Node(V)) void {
             self.st += 1;
             self.stack[self.stack_top()] = node;
             self.lrstack[self.stack_top()] = State.Left;
@@ -88,7 +87,7 @@ pub fn Iter(comptime V: type) type {
                     },
                     State.Value => {
                         // std.debug.print("V:{}\n", .{node.value});
-                        return &node.value;
+                        return node.get_item();
                     },
                     State.Right => {
                         if (node.rnode) |rnode| {
