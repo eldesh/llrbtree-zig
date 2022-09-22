@@ -63,7 +63,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Otherwise, `null` is returned.
         pub fn insert(self: *Self, value: T) Allocator.Error!?T {
             Node.check_inv(self.root);
-            const old = try Node.insert_node(
+            const old = try Node.insert(
                 &self.root,
                 self.allocator,
                 value,

@@ -63,7 +63,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Otherwise, `null` is returned.
         pub fn insert(self: *Self, key: Key, value: Value) Allocator.Error!?Value {
             Node.check_inv(self.root);
-            const oldopt = try Node.insert_node(&self.root, self.allocator, key_value.make(key, value));
+            const oldopt = try Node.insert(&self.root, self.allocator, key_value.make(key, value));
             self.root.?.color = .Black;
             Node.check_inv(self.root);
             return if (oldopt) |old| old.toTuple()[1] else null;

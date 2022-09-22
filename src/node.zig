@@ -202,7 +202,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return h;
         }
 
-        pub fn insert_node(self: *?*@This(), allocator: Allocator, item: T) Allocator.Error!?T {
+        pub fn insert(self: *?*@This(), allocator: Allocator, item: T) Allocator.Error!?T {
             if (self.* == null) {
                 self.* = try @This().new(allocator, item, null, null);
                 return null;
@@ -213,12 +213,12 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
 
             var old: ?T = null;
             switch (Con.PartialOrd.on(*const Key)(Self.get_key(&item), Self.get_key(&node.item)).?) {
-                .lt => old = try insert_node(&node.lnode, allocator, item),
+                .lt => old = try insert(&node.lnode, allocator, item),
                 .eq => {
                     old = node.item;
                     node.item = item;
                 },
-                .gt => old = try insert_node(&node.rnode, allocator, item),
+                .gt => old = try insert(&node.rnode, allocator, item),
             }
 
             self.* = node.fixup();
