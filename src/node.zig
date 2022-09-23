@@ -17,18 +17,27 @@ pub const NodeError = error{
     PerfectBlackBalance,
 };
 
+/// Node of LLRB Tree implementation
+/// 
+/// - `Derive`
+///   Derive struct that implements `get_key` which project reference to value for comparing.
+///   The projected function should have the type `fn (*const T) *const Key`.
+/// - `T`
+///   Type of value held on Node.
+/// - `Key`
+///   Type of value projected for ordering from `T`.
 pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: type) type {
     return struct {
         pub const Self = @This();
         pub const Item = T;
         pub usingnamespace Derive(@This());
 
-        // color of the incoming link (from parent)
+        /// color of the incoming link (from parent)
         color: NodeColor,
         item: T,
-        // left child node
+        /// left child node
         lnode: ?*@This(),
-        // right child node
+        /// right child node
         rnode: ?*@This(),
 
         pub fn get_item(self: *const @This()) *const T {

@@ -5,11 +5,11 @@ const llrbset = @import("./llrbset.zig");
 const Allocator = std.mem.Allocator;
 const Node = @import("./node.zig").Node;
 
-/// An iterator enumerates all values of a `LLRBTreeSet` by asceding order.
+/// A common iterator enumerates all values of `LLRBTreeSet` and `LLRBTreeMap` by asceding order.
 ///
 /// # Details
-/// An iterator enumerates all values of a `LLRBTreeSet` by asceding order.
-/// `Item` of the iterator is const pointer to value of the tree.
+/// An iterator enumerates all values of a `LLRBTreeSet` and `LLRBTreeMap` by asceding order.
+/// `Item` of the iterator is const pointer to a value or a key/value pair of the tree.
 ///
 /// # Notice
 /// This iterator allocates a stack area on the heap to hold intermediate state when iterating through the tree.
