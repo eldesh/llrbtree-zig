@@ -140,6 +140,12 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
             return if (Node.get(self.root, key)) |kv| kv.value() else null;
         }
 
+        /// Get an entry specified with `key`
+        ///
+        /// # Details
+        /// Searches for the node specified by `key` and returns the corresponding [`entry.Entry`].
+        /// If the node is found, an [`entry.Entry.Occupied`] entry is returned.
+        /// Otherwise, a [`entry.Entry.Vacant`] entry is returned.
         pub fn entry(self: *Self, key: Key) Entry(Key, Value) {
             return Node.entry(&self.root, self.allocator, key);
         }

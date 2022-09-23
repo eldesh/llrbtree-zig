@@ -46,17 +46,34 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
         pub const Self: type = @This();
         pub const Key: type = K;
         pub const Value: type = V;
+        pub const Error = error{AlreadyInserted} || Allocator.Error;
 
-        stack: StaticStack(*?*Node(Key, Value), N),
+        const Stack = StaticStack(*?*Node(Key, Value), N);
+
+        /// # Invariant
+        /// `stack.force_peek().* == null`
+        stack: Stack,
         allocator: Allocator,
         key: Key,
+        inserted: bool,
 
-        pub fn new(stack: StaticStack(*?*Node(K, V), N), allocator: Allocator, key: K) Self {
-            // assert(null == (stack.peek() catch unreachable).*);
-            return .{ .stack = stack, .allocator = allocator, .key = key };
+        pub fn new(stack: Stack, allocator: Allocator, key: K) Self {
+            {
+                var muts = stack;
+                assert(muts.force_peek().* == null);
+            }
+            return .{ .stack = stack, .allocator = allocator, .key = key, .inserted = false };
         }
 
-        pub fn insert(self: *Self, value: V) Allocator.Error!void {
+        pub fn get_key(self: *const Self) *const Key {
+            return &self.key;
+        }
+
+        pub fn insert(self: Self, value: V) Error!void {
+            if (self.inserted)
+                return .AlreadyInserted;
+
+            self.inserted = true;
             const newpair = key_value.make(self.key, value);
             self.stack.force_peek().* = try node.Node(K, V).new(self.allocator, newpair, null, null);
             self.stack.force_pop();
