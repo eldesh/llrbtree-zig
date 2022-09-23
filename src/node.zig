@@ -124,13 +124,14 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             }
         }
 
-        pub fn contains_key(self: ?*const @This(), key: *const Key) bool {
-            if (self) |n| {
-                return switch (Con.PartialOrd.on(*const Key)(key, Self.get_key(&n.item)).?) {
-                    .lt => contains_key(n.lnode, key),
-                    .eq => true,
-                    .gt => contains_key(n.rnode, key),
-                };
+        pub fn contains_key(self: ?*const Self, key: *const Key) bool {
+            var node = self;
+            while (node) |n| {
+                switch (Con.PartialOrd.on(*const Key)(key, Self.get_key(&n.item)).?) {
+                    .lt => node = n.lnode,
+                    .eq => return true,
+                    .gt => node = n.rnode,
+                }
             }
             return false;
         }
