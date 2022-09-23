@@ -24,6 +24,14 @@ pub fn KeyValue(comptime K: type, comptime V: type) type {
             return &self._value;
         }
 
+        pub fn mut_key(self: *Self) *Key {
+            return &self._key;
+        }
+
+        pub fn mut_value(self: *Self) *Value {
+            return &self._value;
+        }
+
         pub fn toTuple(self: Self) Tuple(&[_]type{ Key, Value }) {
             return .{ self._key, self._value };
         }

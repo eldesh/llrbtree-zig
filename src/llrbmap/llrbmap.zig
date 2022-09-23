@@ -3,6 +3,7 @@ const Con = @import("basis_concept");
 const node_color = @import("../node_color.zig");
 const node = @import("./node.zig");
 const key_value = @import("./key_value.zig");
+pub const entry = @import("./entry.zig");
 pub const iters = @import("./iter.zig");
 
 const Allocator = std.mem.Allocator;
@@ -11,6 +12,7 @@ const assert = std.debug.assert;
 
 const NodeColor = node_color.NodeColor;
 pub const KeyValue = key_value.KeyValue;
+pub const Entry = entry.Entry;
 
 /// A key/value container.
 ///
@@ -19,7 +21,8 @@ pub const KeyValue = key_value.KeyValue;
 /// All values are associated for each keys, and all key/value pairs are stored based on order relation of the keys.
 ///
 /// # Requirements
-/// `K` is a type and that must have an order relation defined by `Con.isPartialOrd`.
+/// `K` is a type for which an ordering relation is given.
+/// This means `Con.isPartialOrd(K)` evaluates to `true`.
 pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
     comptime assert(Con.isPartialOrd(K));
 
@@ -135,6 +138,10 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// If not found, returns `null`.
         pub fn get(self: *const Self, key: *const Key) ?*const Value {
             return if (Node.get(self.root, key)) |kv| kv.value() else null;
+        }
+
+        pub fn entry(self: *Self, key: Key) Entry(Key, Value) {
+            return Node.entry(&self.root, self.allocator, key);
         }
     };
 }
@@ -372,6 +379,58 @@ test "insert / delete" {
             //     std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
             if (try tree.insert(v, v)) |in|
+                assert(v == in);
+        }
+
+        while (values.popOrNull()) |v| {
+            if (tree.delete(&v)) |rm|
+                assert(v == rm);
+        }
+    }
+}
+
+test "entry" {
+    const testing = std.testing;
+    const rand = std.rand;
+    const Array = std.ArrayList;
+    const allocator = testing.allocator;
+
+    {
+        var tree = LLRBTreeMap(i32, i32).new(testing.allocator);
+        // all nodes would be destroyed
+        // defer tree.destroy();
+        var i: i32 = 0;
+        while (i <= 5) : (i += 1)
+            try testing.expectEqual(try tree.entry(i).insert(i), null);
+        i -= 1;
+        while (i >= 0) : (i -= 1)
+            try testing.expectEqual(try tree.entry(i).insert(i), i);
+        i += 1;
+        while (i <= 5) : (i += 1)
+            try testing.expectEqual(tree.delete(&i), i);
+        i -= 1;
+        while (i >= 0) : (i -= 1)
+            try testing.expectEqual(tree.delete(&i), null);
+    }
+    {
+        var rng = rand.DefaultPrng.init(0);
+        const random = rng.random();
+        const num: usize = 4096;
+
+        var tree = LLRBTreeMap(u32, u32).new(allocator);
+        // all nodes would be destroyed
+        // defer tree.destroy();
+
+        var values = Array(u32).init(allocator);
+        defer values.deinit();
+
+        var i: usize = 0;
+        while (i < num) : (i += 1) {
+            const v = random.int(u32);
+            // if (@mod(i, num / 10) == 0)
+            //     std.debug.print("v: {}th... {}\n", .{ i, v });
+            try values.append(v);
+            if (try tree.entry(v).insert(v)) |in|
                 assert(v == in);
         }
 

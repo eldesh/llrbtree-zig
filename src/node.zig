@@ -30,6 +30,17 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
     return struct {
         pub const Self = @This();
         pub const Item = T;
+        /// The depth of stack for iterating trees
+        ///
+        /// # Details
+        /// This should be greater than or equals to the maximum length of the path from the root.
+        /// The path length includes the number of red-links.
+        ///
+        /// For 64-bit systems (i.e., pointer size is 64 bits), 
+        /// the maximum number of elements in a container is 2^64.
+        /// When a perfect balanced tree has 2^64 elements, the path length is 64.
+        /// If red-links are included, the maximum path length is twice as long.
+        pub const MaxPathLength: comptime_int = 64 * 2;
         pub usingnamespace Derive(@This());
 
         /// color of the incoming link (from parent)
