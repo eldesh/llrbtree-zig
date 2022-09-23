@@ -24,18 +24,37 @@ pub fn Entry(comptime K: type, comptime V: type) type {
             return .{ .Vacant = VacantEntry(K, V).new(stack, allocator, key) };
         }
 
-        pub fn new_occupied(value: *Value) Self {
-            return .{ .Occupied = OccupiedEntry(K, V).new(value) };
+        pub fn new_occupied(key: *const K, value: *V) Self {
+            return .{ .Occupied = OccupiedEntry(K, V).new(key, value) };
         }
 
-        pub fn insert(self: *Self, value: Value) Allocator.Error!?Value {
+        pub fn get_key(self: *const Self) *const K {
+            return switch (self.*) {
+                .Vacant => |vacant| vacant.get_key(),
+                .Occupied => |occupied| occupied.get_key(),
+            };
+        }
+
+        pub fn insert(self: *Self, value: V) Allocator.Error!*V {
             switch (self.*) {
                 .Vacant => |*vacant| {
-                    try vacant.insert(value);
-                    return null;
+                    var old: *V = try vacant.insert(value) catch |err| switch (err) {
+                        VacantEntry(K, V).Error.AlreadyInserted => unreachable,
+                        else => |aerr| aerr,
+                    };
+                    self.* = Self.new_occupied(vacant.get_key(), old);
+                    return old;
                 },
-                .Occupied => |*occupied| return occupied.insert(value),
+                .Occupied => |*occupied| return occupied.get_value_mut(),
             }
+        }
+
+        pub fn modify(self: *Self, f: fn (*V) void) *Self {
+            switch (self.*) {
+                .Occupied => |*occupied| f(occupied.get_value_mut()),
+                else => {},
+            }
+            return self;
         }
     };
 }
@@ -69,19 +88,25 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
             return &self.key;
         }
 
-        pub fn insert(self: Self, value: V) Error!void {
+        pub fn insert(self: *Self, value: V) Error!*Value {
             if (self.inserted)
-                return .AlreadyInserted;
+                return Error.AlreadyInserted;
 
-            self.inserted = true;
-            const newpair = key_value.make(self.key, value);
-            self.stack.force_peek().* = try node.Node(K, V).new(self.allocator, newpair, null, null);
-            self.stack.force_pop();
+            var self_ = self;
+            // insert a value to the Leaf
+            self_.inserted = true;
+            const newpair = key_value.make(self_.key, value);
+            var top = self_.stack.force_peek();
+            top.* = try node.Node(K, V).new(self_.allocator, newpair, null, null);
+            self_.stack.force_pop();
 
-            while (!self.stack.is_empty()) : (self.stack.force_pop()) {
-                const np = self.stack.force_peek();
+            const ptr = top.*.?.get_item_mut().value_mut();
+            // fixup node up to the root
+            while (!self_.stack.is_empty()) : (self_.stack.force_pop()) {
+                const np = self_.stack.force_peek();
                 np.* = np.*.?.fixup();
             }
+            return ptr;
         }
     };
 }
@@ -92,10 +117,23 @@ pub fn OccupiedEntry(comptime K: type, comptime V: type) type {
         pub const Key: type = K;
         pub const Value: type = V;
 
+        key: *const Key,
         value: *Value,
 
-        pub fn new(value: *Value) Self {
-            return .{ .value = value };
+        pub fn new(key: *const Key, value: *Value) Self {
+            return .{ .key = key, .value = value };
+        }
+
+        pub fn get_key(self: *const Self) *const Key {
+            return self.key;
+        }
+
+        pub fn get_value(self: *const Self) *const Value {
+            return self.value;
+        }
+
+        pub fn get_value_mut(self: *Self) *Value {
+            return self.value;
         }
 
         pub fn insert(self: *Self, value: V) V {

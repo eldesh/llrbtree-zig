@@ -24,11 +24,11 @@ pub fn KeyValue(comptime K: type, comptime V: type) type {
             return &self._value;
         }
 
-        pub fn mut_key(self: *Self) *Key {
+        pub fn key_mut(self: *Self) *Key {
             return &self._key;
         }
 
-        pub fn mut_value(self: *Self) *Value {
+        pub fn value_mut(self: *Self) *Value {
             return &self._value;
         }
 

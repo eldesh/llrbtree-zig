@@ -22,7 +22,11 @@ pub fn NodeKeyValue(comptime Self: type) type {
             return item.key();
         }
 
-        pub fn get_value(item: *const Self) *const Value {
+        pub fn get_value(item: *const Item) *const Value {
+            return item.value();
+        }
+
+        pub fn get_value_mut(item: *Item) *Value {
             return item.value();
         }
 
@@ -37,7 +41,7 @@ pub fn NodeKeyValue(comptime Self: type) type {
                     },
                     .eq => {
                         // print("found: {}\n", .{key});
-                        return Entry(Key, Value).new_occupied(n.item.mut_value());
+                        return Entry(Key, Value).new_occupied(n.item.key(), n.item.value_mut());
                     },
                     .gt => {
                         // print("{} > {}\n", .{ key, Self.get_key(&n.item).* });

@@ -90,11 +90,9 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// If it is not found, `null` is returned.
         pub fn delete_entry(self: *Self, key: *const Key) ?KeyValue(Key, Value) {
             Node.check_inv(self.root);
-
             const old = Node.delete(&self.root, self.allocator, key);
             if (self.root) |sroot|
                 sroot.color = .Black;
-
             Node.check_inv(self.root);
             return old;
         }
@@ -406,17 +404,34 @@ test "entry" {
         // all nodes would be destroyed
         // defer tree.destroy();
         var i: i32 = 0;
+        while (i <= 5) : (i += 1) {
+            var entry_ = tree.entry(i);
+            try testing.expectEqual(i, entry_.get_key().*);
+            try testing.expectEqual(i, (try entry_.insert(i)).*);
+        }
+        i -= 1;
+        while (i >= 0) : (i -= 1) {
+            var entry_ = tree.entry(i);
+            try testing.expectEqual(entry_.get_key().*, i);
+            try testing.expectEqual(i, (try entry_.insert(i)).*);
+        }
+        i = 0;
+        while (i <= 5) : (i += 1) {
+            var entry_ = tree.entry(i);
+            try testing.expectEqual(i, entry_.get_key().*);
+            _ = entry_.modify(struct {
+                fn inc(v: *i32) void {
+                    v.* += 1;
+                }
+            }.inc);
+            try testing.expectEqual(i + 1, tree.get(&i).?.*);
+        }
+        i = 0;
         while (i <= 5) : (i += 1)
-            try testing.expectEqual(try tree.entry(i).insert(i), null);
+            try testing.expectEqual(@as(?i32, i + 1), tree.delete(&i));
         i -= 1;
         while (i >= 0) : (i -= 1)
-            try testing.expectEqual(try tree.entry(i).insert(i), i);
-        i += 1;
-        while (i <= 5) : (i += 1)
-            try testing.expectEqual(tree.delete(&i), i);
-        i -= 1;
-        while (i >= 0) : (i -= 1)
-            try testing.expectEqual(tree.delete(&i), null);
+            try testing.expectEqual(@as(?i32, null), tree.delete(&i));
     }
     {
         var rng = rand.DefaultPrng.init(0);
@@ -436,8 +451,8 @@ test "entry" {
             // if (@mod(i, num / 10) == 0)
             //     std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
-            if (try tree.entry(v).insert(v)) |in|
-                assert(v == in);
+            var entry_ = tree.entry(v);
+            try testing.expectEqual(v, (try entry_.insert(v)).*);
         }
 
         while (values.popOrNull()) |v| {

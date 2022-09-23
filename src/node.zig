@@ -51,7 +51,11 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         /// right child node
         rnode: ?*@This(),
 
-        pub fn get_item(self: *const @This()) *const T {
+        pub fn get_item(self: *const Self) *const T {
+            return &self.item;
+        }
+
+        pub fn get_item_mut(self: *Self) *T {
             return &self.item;
         }
 
