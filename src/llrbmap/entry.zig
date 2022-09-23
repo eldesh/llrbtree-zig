@@ -91,19 +91,18 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
         pub fn insert(self: *Self, value: V) Error!*Value {
             if (self.inserted)
                 return Error.AlreadyInserted;
+            defer self.inserted = true;
 
-            var self_ = self;
             // insert a value to the Leaf
-            self_.inserted = true;
-            const newpair = key_value.make(self_.key, value);
-            var top = self_.stack.force_peek();
-            top.* = try node.Node(K, V).new(self_.allocator, newpair, null, null);
-            self_.stack.force_pop();
+            const kv = key_value.make(self.key, value);
+            var top = self.stack.force_peek();
+            self.stack.force_pop();
+            top.* = try node.Node(K, V).new(self.allocator, kv, null, null);
 
             const ptr = top.*.?.get_item_mut().value_mut();
             // fixup node up to the root
-            while (!self_.stack.is_empty()) : (self_.stack.force_pop()) {
-                const np = self_.stack.force_peek();
+            while (!self.stack.is_empty()) : (self.stack.force_pop()) {
+                const np = self.stack.force_peek();
                 np.* = np.*.?.fixup();
             }
             return ptr;
