@@ -196,7 +196,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         // 1. Rotate left a right leaning node
         // 1. Rotate right a 2 reds in a row to a 4node
         // 1. Split a 4node to 2 2nodes
-        fn fixup(self: *@This()) *@This() {
+        pub fn fixup(self: *@This()) *@This() {
             var h = self;
             if (isRed(h.rnode) and !isRed(h.lnode)) {
                 // right leaning h => rotate left
@@ -213,9 +213,9 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return h;
         }
 
-        pub fn insert(self: *?*@This(), allocator: Allocator, item: T) Allocator.Error!?T {
+        pub fn insert(self: *?*Self, allocator: Allocator, item: T) Allocator.Error!?T {
             if (self.* == null) {
-                self.* = try @This().new(allocator, item, null, null);
+                self.* = try Self.new(allocator, item, null, null);
                 return null;
             }
 
