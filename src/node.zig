@@ -136,13 +136,14 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return false;
         }
 
-        pub fn get(self: ?*const @This(), key: *const Key) ?*const T {
-            if (self) |n| {
-                return switch (Con.PartialOrd.on(*const Key)(key, Self.get_key(&n.item)).?) {
-                    .lt => get(n.lnode, key),
-                    .eq => &n.item,
-                    .gt => get(n.rnode, key),
-                };
+        pub fn get(self: ?*const Self, key: *const Key) ?*const T {
+            var node = self;
+            while (node) |n| {
+                switch (Con.PartialOrd.on(*const Key)(key, Self.get_key(&n.item)).?) {
+                    .lt => node = n.lnode,
+                    .eq => return &n.item,
+                    .gt => node = n.rnode,
+                }
             }
             return null;
         }
