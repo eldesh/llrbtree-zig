@@ -2,7 +2,7 @@ const std = @import("std");
 const Con = @import("basis_concept");
 const node_color = @import("../node_color.zig");
 const node = @import("./node.zig");
-const key_value = @import("./key_value.zig");
+pub const key_value = @import("./key_value.zig");
 pub const entry = @import("./entry.zig");
 pub const iters = @import("./iter.zig");
 
@@ -11,8 +11,8 @@ const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 
 const NodeColor = node_color.NodeColor;
-pub const KeyValue = key_value.KeyValue;
-pub const Entry = entry.Entry;
+const KeyValue = key_value.KeyValue;
+const Entry = entry.Entry;
 
 /// A key/value container.
 ///
