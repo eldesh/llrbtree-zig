@@ -1,9 +1,9 @@
 const std = @import("std");
 const Con = @import("basis_concept");
-const node = @import("./node.zig");
+const static_stack = @import("./static_stack.zig");
 
 const Allocator = std.mem.Allocator;
-const Node = node.Node;
+const Tuple = std.meta.Tuple;
 
 /// An iterator enumerates all values of a `LLRBTreeSet` by asceding order.
 ///
@@ -23,10 +23,10 @@ const Node = node.Node;
 ///   _ = item;
 /// }
 /// ```
-pub fn Iter(comptime T: type) type {
+pub fn Iter(comptime Node: type) type {
     return struct {
         pub const Self: type = @This();
-        pub const Item: type = *const T;
+        pub const Item: type = *const Node.Item;
 
         // States of depth first iteration
         const State = enum(u8) {
@@ -42,71 +42,50 @@ pub fn Iter(comptime T: type) type {
             }
         };
 
-        root: ?*const Node(K, V),
-        // iteration stack
-        stack: []*const Node(K, V),
-        lrstack: []State,
-        // index of stack top
-        st: i32,
-        allocator: Allocator,
+        const Stack = static_stack.StaticStack(Tuple(&.{ *const Node, State }), Node.MaxPathLength);
 
-        pub fn new(root: ?*const Node(K, V), allocator: Allocator) Allocator.Error!Self {
-            const h = Node(K, V).black_height(root);
-            var stack = try allocator.alloc(*const Node(K, V), h * 2);
-            var lrstack = try allocator.alloc(State, h * 2);
-            var self = Self{ .root = root, .stack = stack, .lrstack = lrstack, .st = -1, .allocator = allocator };
+        root: ?*const Node,
+        stack: Stack,
+
+        pub fn new(root: ?*const Node) Self {
+            var stack = Stack.new();
             if (root) |n|
-                self.push_stack(n);
-            return self;
-        }
-
-        fn stack_top(self: *const Self) usize {
-            return @intCast(usize, self.st);
-        }
-
-        fn peek_stack(self: *const Self) *const Node(K, V) {
-            return self.stack[@intCast(usize, self.st)];
-        }
-
-        fn push_stack(self: *Self, n: *const Node(K, V)) void {
-            self.st += 1;
-            self.stack[self.stack_top()] = n;
-            self.lrstack[self.stack_top()] = State.Left;
+                stack.force_push(.{ n, State.Left });
+            return .{ .root = root, .stack = stack };
         }
 
         pub fn next(self: *Self) ?Item {
-            while (0 <= self.st) {
+            while (!self.stack.is_empty()) {
                 // std.debug.print("st: {}\n", .{self.st});
-                const n = self.peek_stack();
-                switch (self.lrstack[self.stack_top()].next()) {
+                const n = self.stack.force_peek_ref();
+                switch (n.*[1].next()) {
                     State.Left => {
-                        if (n.lnode) |lnode| {
+                        if (n.*[0].lnode) |lnode| {
                             // std.debug.print("L:{}\n", .{self.st});
-                            self.push_stack(lnode);
+                            self.stack.force_push(.{ lnode, State.Left });
                         }
                     },
                     State.Value => {
                         // std.debug.print("V:{}\n", .{n.value});
-                        return n.get_value();
+                        return n.*[0].get_item();
                     },
                     State.Right => {
-                        if (n.rnode) |rnode| {
+                        if (n.*[0].rnode) |rnode| {
                             // std.debug.print("R:{}\n", .{self.st});
-                            self.push_stack(rnode);
+                            self.stack.force_push(.{ rnode, State.Left });
                         }
                     },
                     State.Pop => {
                         // std.debug.print("P:{}\n", .{self.st});
-                        self.st -= 1; // pop
+                        self.stack.force_pop();
                     },
                 }
             }
             return null;
         }
 
-        pub fn destroy(self: @This()) void {
-            self.allocator.destroy(self.stack.ptr);
-            self.allocator.destroy(self.lrstack.ptr);
+        pub fn destroy(self: *Self) void {
+            _ = self;
         }
     };
 }

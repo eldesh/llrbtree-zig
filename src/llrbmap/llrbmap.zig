@@ -53,9 +53,9 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Returns an iterator which enumerates all key/value paris of the tree.
         /// The keys of the paris are enumerated by asceding order.
         /// Also, the tree must no be modified while the iterator is alive.
-        pub fn iter(self: *const Self) Allocator.Error!iters.Iter(Key, Value) {
+        pub fn iter(self: *const Self) iters.Iter(Key, Value) {
             Node.check_inv(self.root);
-            return iters.Iter(Key, Value).new(self.root, self.allocator);
+            return iters.Iter(Key, Value).new(self.root);
         }
 
         /// Insert the `key` and an associated `value` to the tree `self`.
@@ -483,8 +483,7 @@ test "values" {
         while (i <= 5) : (i += 1)
             try testing.expectEqual(try tree.insert(i, i), null);
 
-        var iter = try tree.iter();
-        defer iter.destroy();
+        var iter = tree.iter();
 
         // values are enumerated by asceding order
         try testing.expectEqual(iter.next().?.*, kv(0, 0));
@@ -503,8 +502,7 @@ test "values" {
         while (i <= 4096) : (i += 1)
             try testing.expectEqual(try tree.insert(i, i), null);
 
-        var iter = try tree.iter();
-        defer iter.destroy();
+        var iter = tree.iter();
         while (iter.next()) |item| {
             _ = item;
             // std.debug.print("item: {}\n", .{item.*});

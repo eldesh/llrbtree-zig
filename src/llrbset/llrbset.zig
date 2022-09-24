@@ -50,9 +50,9 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Returns an iterator which enumerates all values of the tree.
         /// The values are enumerated by asceding order.
         /// Also, the tree must no be modified while the iterator is alive.
-        pub fn iter(self: *const Self) Allocator.Error!iters.Iter(Item) {
+        pub fn iter(self: *const Self) iters.Iter(Item) {
             Node.check_inv(self.root);
-            return iters.Iter(Item).new(self.root, self.allocator);
+            return iters.Iter(Item).new(self.root);
         }
 
         /// Insert the value `value` to the tree `self`.
@@ -385,7 +385,7 @@ test "values" {
         while (i <= 5) : (i += 1)
             try testing.expectEqual(try tree.insert(i), null);
 
-        var iter = try tree.iter();
+        var iter = tree.iter();
         defer iter.destroy();
 
         // values are enumerated by asceding order
@@ -405,7 +405,7 @@ test "values" {
         while (i <= 4096) : (i += 1)
             try testing.expectEqual(try tree.insert(i), null);
 
-        var iter = try tree.iter();
+        var iter = tree.iter();
         defer iter.destroy();
         while (iter.next()) |item| {
             _ = item;
