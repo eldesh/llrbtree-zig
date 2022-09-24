@@ -72,20 +72,20 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
             return if (oldopt) |old| old.toTuple()[1] else null;
         }
 
-        /// Delete a node for the specified `key`.
+        /// Delete a value for the specified `key`.
         ///
         /// # Details
-        /// Delete a node for the specified `key`.
+        /// Delete a value for the specified `key`.
         /// If it exists, the value associated to the `key` is returned.
         /// If it is not found, `null` is returned.
         pub fn delete(self: *Self, key: *const Key) ?Value {
             return if (self.delete_entry(key)) |kv| kv.toTuple()[1] else null;
         }
 
-        /// Delete a node for the specified `key`.
+        /// Delete an entry for the specified `key`.
         ///
         /// # Details
-        /// Delete a node for the specified `key`.
+        /// Delete an entry for the specified `key`.
         /// If it exists, the key/value pair is returned.
         /// If it is not found, `null` is returned.
         pub fn delete_entry(self: *Self, key: *const Key) ?KeyValue(Key, Value) {
