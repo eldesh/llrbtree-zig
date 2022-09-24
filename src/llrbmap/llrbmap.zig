@@ -401,6 +401,7 @@ test "entry" {
     const rand = std.rand;
     const Array = std.ArrayList;
     const allocator = testing.allocator;
+    // const print = std.debug.print;
 
     {
         var tree = LLRBTreeMap(i32, i32).new(testing.allocator);
@@ -415,7 +416,7 @@ test "entry" {
         i -= 1;
         while (i >= 0) : (i -= 1) {
             var entry_ = tree.entry(i);
-            try testing.expectEqual(entry_.get_key().*, i);
+            try testing.expectEqual(i, entry_.get_key().*);
             try testing.expectEqual(i, (try entry_.insert(i)).*);
         }
         i = 0;
