@@ -31,8 +31,8 @@ pub fn Entry(comptime K: type, comptime V: type) type {
 
         pub fn get_key(self: *const Self) *const Key {
             return switch (self.*) {
-                .Vacant => |vacant| vacant.get_key(),
-                .Occupied => |occupied| occupied.get_key(),
+                .Vacant => |*vacant| vacant.get_key(),
+                .Occupied => |*occupied| occupied.get_key(),
             };
         }
 
@@ -93,14 +93,22 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
                 return Error.AlreadyInserted;
             defer self.inserted = true;
 
-            // insert a value to the Leaf
-            const kv = key_value.make(self.key, value);
-            var n = self.stack.force_peek();
-            self.stack.force_pop();
-            n.* = try node.Node(K, V).new(self.allocator, kv, null, null);
-
+            // pop the pointer to the vacant entry
+            var n = pop: {
+                const top = self.stack.force_peek();
+                self.stack.force_pop();
+                assert(top.* == null); // vacant
+                break :pop top;
+            };
+            // insert a value to the leaf
+            n.* = try new: {
+                const kv = key_value.make(self.key, value);
+                var leaf = node.Node(K, V).new(self.allocator, kv, null, null);
+                break :new leaf;
+            };
+            // hold the pointer to the inserted k/v
             const kvp = n.*.?.get_item_mut();
-            // fixup node up to the root
+            // fixup node up to the root from the leaf
             while (!self.stack.is_empty()) : (self.stack.force_pop()) {
                 n = self.stack.force_peek();
                 n.* = n.*.?.fixup();
