@@ -11,9 +11,14 @@ const assert = std.debug.assert;
 const NodeColor = node_color.NodeColor;
 pub const KeyValue = key_value.KeyValue;
 
-pub const NodeError = error{
+/// Errors for invariant violation errors.
+/// These errors will be occurred only for the Debug mode.
+pub const InvariantError = error{
+    // 2 consecutive Red nodes occurred
     TwoRedsInARow,
+    // A right-leaning 3-node is occurred
     NotLeftLeaning,
+    // The number of black links of a left node is not equals to the right one
     PerfectBlackBalance,
 };
 
@@ -72,10 +77,10 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             self.?.check_perfect_black_balance() catch unreachable;
         }
 
-        fn check_disallowed_2reds(self: *const Self) NodeError!void {
+        fn check_disallowed_2reds(self: *const Self) InvariantError!void {
             if (isRed(self)) {
                 if (isRed(self.lnode) or isRed(self.rnode))
-                    return NodeError.TwoRedsInARow;
+                    return InvariantError.TwoRedsInARow;
             }
 
             if (self.rnode) |rnode|
@@ -85,18 +90,18 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         }
 
         // isRed(self.rnode) ==> isRed(self.lnode)
-        fn check_left_leaning(self: *const Self) NodeError!void {
+        fn check_left_leaning(self: *const Self) InvariantError!void {
             if (!isRed(self.rnode) or self.lnode == null or isRed(self.lnode)) {
                 if (self.rnode) |rnode|
                     try rnode.check_left_leaning();
                 if (self.lnode) |lnode|
                     try lnode.check_left_leaning();
             } else {
-                return NodeError.NotLeftLeaning;
+                return InvariantError.NotLeftLeaning;
             }
         }
 
-        fn check_perfect_black_balance(self: Self) NodeError!void {
+        fn check_perfect_black_balance(self: Self) InvariantError!void {
             var self_ = self;
             var rblack: u32 = 0;
             var lblack: u32 = 0;
@@ -113,7 +118,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             }
             if (rblack != lblack) {
                 std.debug.print("balance: {} vs {}\n", .{ lblack, rblack });
-                return NodeError.PerfectBlackBalance;
+                return InvariantError.PerfectBlackBalance;
             }
             if (self.rnode) |rnode|
                 try rnode.check_perfect_black_balance();
