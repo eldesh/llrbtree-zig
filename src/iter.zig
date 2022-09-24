@@ -4,6 +4,7 @@ const static_stack = @import("./static_stack.zig");
 
 const Allocator = std.mem.Allocator;
 const Tuple = std.meta.Tuple;
+const StaticStack = static_stack.StaticStack;
 
 /// An iterator enumerates all values of a `LLRBTreeSet` by asceding order.
 ///
@@ -23,10 +24,10 @@ const Tuple = std.meta.Tuple;
 ///   _ = item;
 /// }
 /// ```
-pub fn Iter(comptime Node: type) type {
+pub fn Iter(comptime Node: type, comptime V: type) type {
     return struct {
         pub const Self: type = @This();
-        pub const Item: type = *const Node.Item;
+        pub const Item: type = V;
 
         // States of depth first iteration
         const State = enum(u8) {
@@ -42,21 +43,21 @@ pub fn Iter(comptime Node: type) type {
             }
         };
 
-        const Stack = static_stack.StaticStack(Tuple(&.{ *const Node, State }), Node.MaxPathLength);
+        const Stack = StaticStack(Tuple(&.{ *const Node, State }), Node.MaxPathLength);
 
         root: ?*const Node,
         stack: Stack,
+        proj: fn (*const Node) Item,
 
-        pub fn new(root: ?*const Node) Self {
+        pub fn new(root: ?*const Node, proj: fn (*const Node) Item) Self {
             var stack = Stack.new();
             if (root) |n|
                 stack.force_push(.{ n, State.Left });
-            return .{ .root = root, .stack = stack };
+            return .{ .root = root, .stack = stack, .proj = proj };
         }
 
         pub fn next(self: *Self) ?Item {
             while (!self.stack.is_empty()) {
-                // std.debug.print("st: {}\n", .{self.st});
                 const n = self.stack.force_peek_ref();
                 switch (n.*[1].next()) {
                     State.Left => {
@@ -67,7 +68,7 @@ pub fn Iter(comptime Node: type) type {
                     },
                     State.Value => {
                         // std.debug.print("V:{}\n", .{n.value});
-                        return n.*[0].get_item();
+                        return self.proj(n.*[0]);
                     },
                     State.Right => {
                         if (n.*[0].rnode) |rnode| {

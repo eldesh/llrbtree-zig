@@ -52,7 +52,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Also, the tree must no be modified while the iterator is alive.
         pub fn iter(self: *const Self) iters.Iter(Item) {
             Node.check_inv(self.root);
-            return iters.Iter(Item).new(self.root);
+            return iters.Iter(Item).new(self.root, Node.get_item);
         }
 
         /// Insert the value `value` to the tree `self`.
@@ -381,8 +381,8 @@ test "values" {
         var tree = LLRBTreeSet(i32).new(testing.allocator);
         defer tree.destroy();
 
-        var i: i32 = 0;
-        while (i <= 5) : (i += 1)
+        var i: i32 = 5;
+        while (0 <= i) : (i -= 1)
             try testing.expectEqual(try tree.insert(i), null);
 
         var iter = tree.iter();
@@ -402,14 +402,19 @@ test "values" {
         defer tree.destroy();
 
         var i: i32 = 0;
-        while (i <= 4096) : (i += 1)
+        while (i <= 4096) : (i += 2)
+            try testing.expectEqual(try tree.insert(i), null);
+        i = 1;
+        while (i <= 4096) : (i += 2)
             try testing.expectEqual(try tree.insert(i), null);
 
         var iter = tree.iter();
         defer iter.destroy();
+        var old: LLRBTreeSet(i32).Item = -1;
         while (iter.next()) |item| {
-            _ = item;
             // std.debug.print("item: {}\n", .{item.*});
+            assert(old < item.*);
+            old = item.*;
         }
     }
 }

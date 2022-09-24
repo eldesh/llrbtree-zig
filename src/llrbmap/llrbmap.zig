@@ -51,11 +51,48 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         ///
         /// # Details
         /// Returns an iterator which enumerates all key/value paris of the tree.
-        /// The keys of the paris are enumerated by asceding order.
-        /// Also, the tree must no be modified while the iterator is alive.
+        /// The keys of the pairs are enumerated by asceding order.
+        ///
+        /// # Notice
+        /// The tree must not be modified while the iterator is alive.
         pub fn iter(self: *const Self) iters.Iter(Key, Value) {
             Node.check_inv(self.root);
-            return iters.Iter(Key, Value).new(self.root);
+            return iters.Iter(Key, Value).new(self.root, Node.get_item);
+        }
+
+        /// Returns an iterator which enumerates all keys of the tree by ascending order.
+        ///
+        /// # Details
+        /// Returns an iterator which enumerates all keys of the tree by ascending order.
+        ///
+        /// # Notice
+        /// The tree must not be modified while the iterator is alive.
+        pub fn keys(self: *const Self) iters.Keys(Key, Value) {
+            Node.check_inv(self.root);
+            const proj = struct {
+                fn key(n: *const Node) *const Key {
+                    return Node.get_key(n.get_item());
+                }
+            };
+            return iters.Keys(Key, Value).new(self.root, proj.key);
+        }
+
+        /// Returns an iterator which enumerates all values of the tree.
+        ///
+        /// # Details
+        /// Returns an iterator which enumerates all values of the tree.
+        /// Values are enumerated in ascending order of the associated key.
+        ///
+        /// # Notice
+        /// The tree must not be modified while the iterator is alive.
+        pub fn values(self: *const Self) iters.Values(Key, Value) {
+            Node.check_inv(self.root);
+            const proj = struct {
+                fn value(n: *const Node) *const Value {
+                    return Node.get_value(n.get_item());
+                }
+            };
+            return iters.Values(Key, Value).new(self.root, proj.value);
         }
 
         /// Insert the `key` and an associated `value` to the tree `self`.
@@ -466,7 +503,7 @@ test "entry" {
     }
 }
 
-test "values" {
+test "iter" {
     const testing = std.testing;
     const KV = key_value.KeyValue;
     {
@@ -480,12 +517,14 @@ test "values" {
         var tree = Tree.new(testing.allocator);
         defer tree.destroy();
 
-        var i: i32 = 0;
-        while (i <= 5) : (i += 1)
-            try testing.expectEqual(try tree.insert(i, i), null);
+        try testing.expectEqual(try tree.insert(5, 5), null);
+        try testing.expectEqual(try tree.insert(1, 1), null);
+        try testing.expectEqual(try tree.insert(0, 0), null);
+        try testing.expectEqual(try tree.insert(2, 2), null);
+        try testing.expectEqual(try tree.insert(4, 4), null);
+        try testing.expectEqual(try tree.insert(3, 3), null);
 
         var iter = tree.iter();
-
         // values are enumerated by asceding order
         try testing.expectEqual(iter.next().?.*, kv(0, 0));
         try testing.expectEqual(iter.next().?.*, kv(1, 1));
@@ -500,13 +539,108 @@ test "values" {
         defer tree.destroy();
 
         var i: i32 = 0;
-        while (i <= 4096) : (i += 1)
+        while (i <= 4096) : (i += 2)
+            try testing.expectEqual(try tree.insert(i, i), null);
+        i = 1;
+        while (i <= 4096) : (i += 2)
             try testing.expectEqual(try tree.insert(i, i), null);
 
         var iter = tree.iter();
+        var old: LLRBTreeMap(i32, i32).Value = -1;
         while (iter.next()) |item| {
-            _ = item;
             // std.debug.print("item: {}\n", .{item.*});
+            assert(old < item.key().*);
+            old = item.key().*;
+        }
+    }
+}
+
+test "keys" {
+    const testing = std.testing;
+    {
+        const Tree = LLRBTreeMap(i32, i32);
+        var tree = Tree.new(testing.allocator);
+        defer tree.destroy();
+
+        try testing.expectEqual(try tree.insert(5, 5), null);
+        try testing.expectEqual(try tree.insert(1, 1), null);
+        try testing.expectEqual(try tree.insert(0, 0), null);
+        try testing.expectEqual(try tree.insert(2, 2), null);
+        try testing.expectEqual(try tree.insert(4, 4), null);
+        try testing.expectEqual(try tree.insert(3, 3), null);
+
+        var keys = tree.keys();
+        // keys are enumerated by asceding order
+        try testing.expectEqual(keys.next().?.*, 0);
+        try testing.expectEqual(keys.next().?.*, 1);
+        try testing.expectEqual(keys.next().?.*, 2);
+        try testing.expectEqual(keys.next().?.*, 3);
+        try testing.expectEqual(keys.next().?.*, 4);
+        try testing.expectEqual(keys.next().?.*, 5);
+        try testing.expectEqual(keys.next(), null);
+    }
+    {
+        var tree = LLRBTreeMap(i32, i32).new(testing.allocator);
+        defer tree.destroy();
+
+        var i: i32 = 0;
+        while (i <= 4096) : (i += 2)
+            try testing.expectEqual(try tree.insert(i, i), null);
+        i = 1;
+        while (i <= 4096) : (i += 2)
+            try testing.expectEqual(try tree.insert(i, i), null);
+
+        var keys = tree.keys();
+        var old: LLRBTreeMap(i32, i32).Value = -1;
+        while (keys.next()) |key| {
+            // std.debug.print("item: {}\n", .{item.*});
+            assert(old < key.*);
+            old = key.*;
+        }
+    }
+}
+
+test "value" {
+    const testing = std.testing;
+    {
+        const Tree = LLRBTreeMap(i32, i32);
+        var tree = Tree.new(testing.allocator);
+        defer tree.destroy();
+
+        try testing.expectEqual(try tree.insert(5, 0), null);
+        try testing.expectEqual(try tree.insert(1, 4), null);
+        try testing.expectEqual(try tree.insert(0, 5), null);
+        try testing.expectEqual(try tree.insert(2, 3), null);
+        try testing.expectEqual(try tree.insert(4, 1), null);
+        try testing.expectEqual(try tree.insert(3, 2), null);
+
+        var values = tree.values();
+        // values are enumerated by asceding order of key
+        try testing.expectEqual(values.next().?.*, 5);
+        try testing.expectEqual(values.next().?.*, 4);
+        try testing.expectEqual(values.next().?.*, 3);
+        try testing.expectEqual(values.next().?.*, 2);
+        try testing.expectEqual(values.next().?.*, 1);
+        try testing.expectEqual(values.next().?.*, 0);
+        try testing.expectEqual(values.next(), null);
+    }
+    {
+        var tree = LLRBTreeMap(i32, i32).new(testing.allocator);
+        defer tree.destroy();
+
+        var i: i32 = 0;
+        while (i <= 4096) : (i += 2)
+            try testing.expectEqual(try tree.insert(i, i), null);
+        i = 1;
+        while (i <= 4096) : (i += 2)
+            try testing.expectEqual(try tree.insert(i, i), null);
+
+        var values = tree.values();
+        var old: LLRBTreeMap(i32, i32).Value = -1;
+        while (values.next()) |val| {
+            // std.debug.print("item: {}\n", .{item.*});
+            assert(old < val.*);
+            old = val.*;
         }
     }
 }

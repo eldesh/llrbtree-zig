@@ -15,5 +15,5 @@ const node = @import("./node.zig");
 /// }
 /// ```
 pub fn Iter(comptime V: type) type {
-    return iter.Iter(node.Node(V));
+    return iter.Iter(node.Node(V), *const V);
 }
