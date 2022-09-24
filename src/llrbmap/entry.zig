@@ -11,31 +11,32 @@ const Node = node.Node;
 const assert = std.debug.assert;
 
 pub fn Entry(comptime K: type, comptime V: type) type {
-    const N = Node(K, V).MaxPathLength;
     return union(enum) {
         pub const Self: type = @This();
         pub const Key: type = K;
         pub const Value: type = V;
 
+        const Stack = StaticStack(*?*Node(Key, Value), Node(Key, Value).MaxPathLength);
+
         Vacant: VacantEntry(K, V),
         Occupied: OccupiedEntry(K, V),
 
-        pub fn new_vacant(stack: StaticStack(*?*Node(K, V), N), allocator: Allocator, key: K) Self {
-            return .{ .Vacant = VacantEntry(K, V).new(stack, allocator, key) };
+        pub fn new_vacant(stack: Stack, allocator: Allocator, key: Key) Self {
+            return .{ .Vacant = VacantEntry(Key, Value).new(stack, allocator, key) };
         }
 
-        pub fn new_occupied(key: *const K, value: *V) Self {
-            return .{ .Occupied = OccupiedEntry(K, V).new(key, value) };
+        pub fn new_occupied(key: *const Key, value: *Value) Self {
+            return .{ .Occupied = OccupiedEntry(Key, Value).new(key, value) };
         }
 
-        pub fn get_key(self: *const Self) *const K {
+        pub fn get_key(self: *const Self) *const Key {
             return switch (self.*) {
                 .Vacant => |vacant| vacant.get_key(),
                 .Occupied => |occupied| occupied.get_key(),
             };
         }
 
-        pub fn insert(self: *Self, value: V) Allocator.Error!*V {
+        pub fn insert(self: *Self, value: Value) Allocator.Error!*Value {
             switch (self.*) {
                 .Vacant => |*vacant| {
                     var old: *V = try vacant.insert(value) catch |err| switch (err) {
@@ -49,7 +50,7 @@ pub fn Entry(comptime K: type, comptime V: type) type {
             }
         }
 
-        pub fn modify(self: *Self, f: fn (*V) void) *Self {
+        pub fn modify(self: *Self, f: fn (*Value) void) *Self {
             switch (self.*) {
                 .Occupied => |*occupied| f(occupied.get_value_mut()),
                 else => {},
@@ -60,14 +61,13 @@ pub fn Entry(comptime K: type, comptime V: type) type {
 }
 
 pub fn VacantEntry(comptime K: type, comptime V: type) type {
-    const N = Node(K, V).MaxPathLength;
     return struct {
         pub const Self: type = @This();
         pub const Key: type = K;
         pub const Value: type = V;
         pub const Error = error{AlreadyInserted} || Allocator.Error;
 
-        const Stack = StaticStack(*?*Node(Key, Value), N);
+        const Stack = StaticStack(*?*Node(Key, Value), Node(Key, Value).MaxPathLength);
 
         /// # Invariant
         /// `stack.force_peek().* == null`
@@ -76,7 +76,7 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
         key: Key,
         inserted: bool,
 
-        pub fn new(stack: Stack, allocator: Allocator, key: K) Self {
+        pub fn new(stack: Stack, allocator: Allocator, key: Key) Self {
             {
                 var muts = stack;
                 assert(muts.force_peek().* == null);
@@ -135,7 +135,7 @@ pub fn OccupiedEntry(comptime K: type, comptime V: type) type {
             return self.value;
         }
 
-        pub fn insert(self: *Self, value: V) V {
+        pub fn insert(self: *Self, value: Value) Value {
             const old = self.value.*;
             self.value.* = value;
             return old;
