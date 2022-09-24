@@ -47,9 +47,9 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         color: NodeColor,
         item: T,
         /// left child node
-        lnode: ?*@This(),
+        lnode: ?*Self,
         /// right child node
-        rnode: ?*@This(),
+        rnode: ?*Self,
 
         pub fn get_item(self: *const Self) *const T {
             return &self.item;
@@ -59,7 +59,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return &self.item;
         }
 
-        pub fn check_inv(self: ?*@This()) void {
+        pub fn check_inv(self: ?*Self) void {
             // enabled only when Debug mode
             if (comptime builtin.mode != std.builtin.Mode.Debug)
                 return;
@@ -72,7 +72,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             self.?.check_perfect_black_balance() catch unreachable;
         }
 
-        fn check_disallowed_2reds(self: *const @This()) NodeError!void {
+        fn check_disallowed_2reds(self: *const Self) NodeError!void {
             if (isRed(self)) {
                 if (isRed(self.lnode) or isRed(self.rnode))
                     return NodeError.TwoRedsInARow;
@@ -85,7 +85,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         }
 
         // isRed(self.rnode) ==> isRed(self.lnode)
-        fn check_left_leaning(self: *const @This()) NodeError!void {
+        fn check_left_leaning(self: *const Self) NodeError!void {
             if (!isRed(self.rnode) or self.lnode == null or isRed(self.lnode)) {
                 if (self.rnode) |rnode|
                     try rnode.check_left_leaning();
@@ -96,12 +96,12 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             }
         }
 
-        fn check_perfect_black_balance(self: @This()) NodeError!void {
+        fn check_perfect_black_balance(self: Self) NodeError!void {
             var self_ = self;
             var rblack: u32 = 0;
             var lblack: u32 = 0;
 
-            var node: ?*@This() = &self_;
+            var node: ?*Self = &self_;
             while (node) |n| : (node = n.rnode) {
                 if (!isRed(n.rnode))
                     rblack += 1;
@@ -121,14 +121,14 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 try lnode.check_perfect_black_balance();
         }
 
-        pub fn new(alloc: Allocator, item: T, lnode: ?*@This(), rnode: ?*@This()) Allocator.Error!*@This() {
-            var node = try alloc.create(@This());
+        pub fn new(alloc: Allocator, item: T, lnode: ?*Self, rnode: ?*Self) Allocator.Error!*Self {
+            var node = try alloc.create(Self);
             node.* = .{ .color = .Red, .item = item, .lnode = lnode, .rnode = rnode };
             check_inv(node);
             return node;
         }
 
-        pub fn destroy(self: ?*@This(), allocator: Allocator) void {
+        pub fn destroy(self: ?*Self, allocator: Allocator) void {
             check_inv(self);
             if (self) |node| {
                 destroy(node.lnode, allocator);
@@ -163,9 +163,9 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return null;
         }
 
-        pub fn black_height(self: ?*const @This()) usize {
+        pub fn black_height(self: ?*const Self) usize {
             var h: usize = if (isRed(self)) 0 else 1;
-            var node: ?*const @This() = self;
+            var node: ?*const Self = self;
             while (node) |n| : (node = n.lnode) {
                 if (!isRed(n.lnode))
                     h += 1;
@@ -173,7 +173,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return h;
         }
 
-        fn rotate_right(self: *@This()) *@This() {
+        fn rotate_right(self: *Self) *Self {
             const x = self.lnode.?;
             self.lnode = x.rnode;
             x.rnode = self;
@@ -182,7 +182,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return x;
         }
 
-        fn rotate_left(self: *@This()) *@This() {
+        fn rotate_left(self: *Self) *Self {
             const x = self.rnode.?;
             self.rnode = x.lnode;
             x.lnode = self;
@@ -199,7 +199,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         //   split 4node to 2 2nodes.
         // For colors of both child nodes are black:
         //   combine 2 2nodes into a 4node.
-        fn flip_color(self: *@This()) void {
+        fn flip_color(self: *Self) void {
             self.color.flip();
             self.lnode.?.color.flip();
             self.rnode.?.color.flip();
@@ -211,7 +211,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         // 1. Rotate left a right leaning node
         // 1. Rotate right a 2 reds in a row to a 4node
         // 1. Split a 4node to 2 2nodes
-        pub fn fixup(self: *@This()) *@This() {
+        pub fn fixup(self: *Self) *Self {
             var h = self;
             if (isRed(h.rnode) and !isRed(h.lnode)) {
                 // right leaning h => rotate left
@@ -252,12 +252,12 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         }
 
         // Checks if node `self` is not `null` and the value of the color field is equal to `.Red`.
-        fn isRed(self: ?*const @This()) bool {
+        fn isRed(self: ?*const Self) bool {
             return if (self) |node| node.color == .Red else false;
         }
 
         // move a red link to the left
-        fn move_redleft(self: *@This()) *@This() {
+        fn move_redleft(self: *Self) *Self {
             var h = self;
             h.flip_color();
             // flip_color ensures both links are not null
@@ -270,7 +270,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         }
 
         // move a red link to the right
-        fn move_redright(self: *@This()) *@This() {
+        fn move_redright(self: *Self) *Self {
             var h = self;
             // Combine as it maybe 2 x 2nodes.
             // 'Maybe' because this function called after the invariant is broken.
@@ -283,13 +283,13 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return h;
         }
 
-        fn min(self: *@This()) *@This() {
-            var h: *@This() = self;
+        fn min(self: *Self) *Self {
+            var h = self;
             while (h.lnode) |lnode| : (h = lnode) {}
             return h;
         }
 
-        pub fn delete(self: *?*@This(), allocator: Allocator, key: *const Key) ?T {
+        pub fn delete(self: *?*Self, allocator: Allocator, key: *const Key) ?T {
             if (self.* == null)
                 return null;
 
@@ -358,11 +358,11 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         // # Details
         // Delete the min value from the tree `self` and returns the removed value.
         // If the tree is empty, `null` is returned.
-        pub fn delete_min(self: *?*@This(), allocator: Allocator) ?T {
+        pub fn delete_min(self: *?*Self, allocator: Allocator) ?T {
             if (self.* == null)
                 return null;
 
-            var h: *@This() = self.*.?;
+            var h: *Self = self.*.?;
             var old: ?T = null;
             if (h.lnode == null) {
                 // std.debug.print("delete_min: lnode=null: {}\n", .{h.value});
@@ -386,7 +386,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 h = h.move_redleft();
             }
 
-            old = @This().delete_min(&h.lnode, allocator);
+            old = delete_min(&h.lnode, allocator);
             self.* = h.fixup();
             return old;
         }
@@ -399,7 +399,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         //
         // Move red link down/right to tree.
         // Because removing a black link breaks balance.
-        pub fn delete_max(self: *?*@This(), allocator: Allocator) ?T {
+        pub fn delete_max(self: *?*Self, allocator: Allocator) ?T {
             if (self.* == null)
                 return null;
 
@@ -429,7 +429,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
                 h = h.move_redright();
 
-            old = @This().delete_max(&h.rnode, allocator);
+            old = delete_max(&h.rnode, allocator);
             self.* = h.fixup();
             return old;
         }
