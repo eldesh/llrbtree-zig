@@ -101,9 +101,9 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
                 break :pop top;
             };
             // insert a value to the leaf
-            n.* = try new: {
+            n.* = new: {
                 const kv = key_value.make(self.key, value);
-                var leaf = node.Node(K, V).new(self.allocator, kv, null, null);
+                var leaf = try node.Node(K, V).new(self.allocator, kv, null, null);
                 break :new leaf;
             };
             // hold the pointer to the inserted k/v
