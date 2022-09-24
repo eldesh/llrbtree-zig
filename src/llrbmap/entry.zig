@@ -95,16 +95,18 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
 
             // insert a value to the Leaf
             const kv = key_value.make(self.key, value);
-            var top = self.stack.force_peek();
+            var n = self.stack.force_peek();
             self.stack.force_pop();
-            top.* = try node.Node(K, V).new(self.allocator, kv, null, null);
+            n.* = try node.Node(K, V).new(self.allocator, kv, null, null);
 
-            const kvp = top.*.?.get_item_mut();
+            const kvp = n.*.?.get_item_mut();
             // fixup node up to the root
             while (!self.stack.is_empty()) : (self.stack.force_pop()) {
-                const np = self.stack.force_peek();
-                np.* = np.*.?.fixup();
+                n = self.stack.force_peek();
+                n.* = n.*.?.fixup();
             }
+            // update the color of the root node to black
+            n.*.?.color = .Black;
             return kvp;
         }
 
