@@ -51,6 +51,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// The values are enumerated by asceding order.
         /// Also, the tree must no be modified while the iterator is alive.
         pub fn iter(self: *const Self) Allocator.Error!iters.Iter(Item) {
+            Node.check_inv(self.root);
             return iters.Iter(Item).new(self.root, self.allocator);
         }
 
@@ -81,11 +82,9 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// If it is not found, `null` is returned.
         pub fn delete(self: *Self, value: *const T) ?T {
             Node.check_inv(self.root);
-
             const old = Node.delete(&self.root, self.allocator, value);
             if (self.root) |sroot|
                 sroot.color = .Black;
-
             Node.check_inv(self.root);
             return old;
         }
@@ -96,9 +95,8 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Delete the minimum element from tree `self`, and returns it.
         /// And `null` is returned for empty tree.
         pub fn delete_min(self: *Self) ?T {
-            var old: ?T = null;
             Node.check_inv(self.root);
-            old = Node.delete_min(&self.root, self.allocator);
+            const old = Node.delete_min(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
@@ -111,9 +109,8 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Delete the maximum element from tree `self`, and returns it.
         /// And `null` is returned for empty tree.
         pub fn delete_max(self: *Self) ?T {
-            var old: ?T = null;
             Node.check_inv(self.root);
-            old = Node.delete_max(&self.root, self.allocator);
+            const old = Node.delete_max(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
@@ -122,12 +119,14 @@ pub fn LLRBTreeSet(comptime T: type) type {
 
         /// Checks to see if it contains a node with a value equal to `value`.
         pub fn contains(self: *const Self, value: *const T) bool {
+            Node.check_inv(self.root);
             return Node.contains_key(self.root, value);
         }
 
         /// Checks whether a node contains a value equal to `value` and returns a pointer to that value.
         /// If not found, returns `null`.
         pub fn get(self: *const Self, value: *const T) ?*const T {
+            Node.check_inv(self.root);
             return Node.get(self.root, value);
         }
     };

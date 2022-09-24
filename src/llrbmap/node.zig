@@ -13,7 +13,7 @@ const StaticStack = static_stack.StaticStack;
 const print = std.debug.print;
 
 /// Derive methods defined only for Node specified for Key/Value type.
-pub fn NodeKeyValue(comptime Self: type) type {
+fn NodeKeyValue(comptime Self: type) type {
     const Item = Self.Item;
     const Key = Self.Item.Key;
     const Value = Self.Item.Value;

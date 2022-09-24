@@ -54,6 +54,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// The keys of the paris are enumerated by asceding order.
         /// Also, the tree must no be modified while the iterator is alive.
         pub fn iter(self: *const Self) Allocator.Error!iters.Iter(Key, Value) {
+            Node.check_inv(self.root);
             return iters.Iter(Key, Value).new(self.root, self.allocator);
         }
 
@@ -79,6 +80,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// If it exists, the value associated to the `key` is returned.
         /// If it is not found, `null` is returned.
         pub fn delete(self: *Self, key: *const Key) ?Value {
+            Node.check_inv(self.root);
             return if (self.delete_entry(key)) |kv| kv.toTuple()[1] else null;
         }
 
@@ -103,9 +105,8 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Delete the key/value pair with the minimum key from the tree `self`, and returns the pair.
         /// And `null` is returned for empty tree.
         pub fn delete_min(self: *Self) ?KeyValue(Key, Value) {
-            var old: ?KeyValue(Key, Value) = null;
             Node.check_inv(self.root);
-            old = Node.delete_min(&self.root, self.allocator);
+            var old = Node.delete_min(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
@@ -118,9 +119,8 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Delete the key/value pair with the maximum key from the tree `self`, and returns the pair.
         /// And `null` is returned for empty tree.
         pub fn delete_max(self: *Self) ?KeyValue(Key, Value) {
-            var old: ?KeyValue(Key, Value) = null;
             Node.check_inv(self.root);
-            old = Node.delete_max(&self.root, self.allocator);
+            var old = Node.delete_max(&self.root, self.allocator);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
@@ -129,12 +129,14 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
 
         /// Checks to see if it contains a value for the specified `key`.
         pub fn contains_key(self: *const Self, key: *const Key) bool {
+            Node.check_inv(self.root);
             return Node.contains_key(self.root, key);
         }
 
         /// Checks whether a node contains a value equal to `value` and returns a pointer to that value.
         /// If not found, returns `null`.
         pub fn get(self: *const Self, key: *const Key) ?*const Value {
+            Node.check_inv(self.root);
             return if (Node.get(self.root, key)) |kv| kv.value() else null;
         }
 
@@ -145,6 +147,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// If the node is found, an [`entry.Entry.Occupied`] entry is returned.
         /// Otherwise, a [`entry.Entry.Vacant`] entry is returned.
         pub fn entry(self: *Self, key: Key) Entry(Key, Value) {
+            Node.check_inv(self.root);
             return Node.entry(&self.root, self.allocator, key);
         }
     };
