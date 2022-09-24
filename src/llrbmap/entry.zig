@@ -39,12 +39,12 @@ pub fn Entry(comptime K: type, comptime V: type) type {
         pub fn insert(self: *Self, value: Value) Allocator.Error!*Value {
             switch (self.*) {
                 .Vacant => |*vacant| {
-                    var old: *V = try vacant.insert(value) catch |err| switch (err) {
+                    var old = try vacant.insert_entry(value) catch |err| switch (err) {
                         VacantEntry(K, V).Error.AlreadyInserted => unreachable,
                         else => |aerr| aerr,
                     };
-                    self.* = Self.new_occupied(vacant.get_key(), old);
-                    return old;
+                    self.* = Self.new_occupied(old.key(), old.value_mut());
+                    return old.value_mut();
                 },
                 .Occupied => |*occupied| return occupied.get_value_mut(),
             }
@@ -88,7 +88,7 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
             return &self.key;
         }
 
-        pub fn insert(self: *Self, value: V) Error!*Value {
+        fn insert_entry(self: *Self, value: Value) Error!*key_value.KeyValue(Key, Value) {
             if (self.inserted)
                 return Error.AlreadyInserted;
             defer self.inserted = true;
@@ -99,13 +99,18 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
             self.stack.force_pop();
             top.* = try node.Node(K, V).new(self.allocator, kv, null, null);
 
-            const ptr = top.*.?.get_item_mut().value_mut();
+            const kvp = top.*.?.get_item_mut();
             // fixup node up to the root
             while (!self.stack.is_empty()) : (self.stack.force_pop()) {
                 const np = self.stack.force_peek();
                 np.* = np.*.?.fixup();
             }
-            return ptr;
+            return kvp;
+        }
+
+        pub fn insert(self: *Self, value: Value) Error!*Value {
+            var pkv = self.insert_entry(value);
+            return &pkv.value_mut();
         }
     };
 }
