@@ -119,8 +119,8 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
         }
 
         pub fn insert(self: *Self, value: Value) Error!*Value {
-            var pkv = self.insert_entry(value);
-            return &pkv.value_mut();
+            var pkv = try self.insert_entry(value);
+            return pkv.value_mut();
         }
     };
 }
