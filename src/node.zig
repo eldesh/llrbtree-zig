@@ -168,6 +168,8 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return null;
         }
 
+        // Number of black links in the path leading to the minimum (leftmost) node.
+        // Used to deduce the max path length in a tree.
         pub fn black_height(self: ?*const Self) usize {
             var h: usize = if (isRed(self)) 0 else 1;
             var node: ?*const Self = self;
