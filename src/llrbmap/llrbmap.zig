@@ -37,10 +37,16 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         allocator: Allocator,
         root: ?*Node,
 
+        /// Build a Map by passing an allocator that allocates memory for internal nodes.
         pub fn new(allocator: Allocator) Self {
             return .{ .allocator = allocator, .root = null };
         }
 
+        /// Destroy the Map
+        ///
+        /// # Details
+        /// Deallocates memory of all remaining nodes in the Map.
+        /// Memory owned by keys and values are not released.
         pub fn destroy(self: *Self) void {
             Node.check_inv(self.root);
             Node.destroy(self.root, self.allocator);

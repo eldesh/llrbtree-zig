@@ -10,6 +10,14 @@ const Node = node.Node;
 
 const assert = std.debug.assert;
 
+/// Entry resulting from searches by key.
+///
+/// - `Vacant`
+///   An empty entry associated with the key.
+///   It is able to insert a new value for the key.
+/// - `Occupied`
+///   A key/value occupied entry.
+///   It is able to update the value.
 pub fn Entry(comptime K: type, comptime V: type) type {
     return union(enum) {
         pub const Self: type = @This();
@@ -21,10 +29,12 @@ pub fn Entry(comptime K: type, comptime V: type) type {
         Vacant: VacantEntry(K, V),
         Occupied: OccupiedEntry(K, V),
 
+        /// Construct a `Entry.Vacant`.
         pub fn new_vacant(stack: Stack, allocator: Allocator, key: Key) Self {
             return .{ .Vacant = VacantEntry(Key, Value).new(stack, allocator, key) };
         }
 
+        /// Construct a `Entry.Occupied`.
         pub fn new_occupied(key: *const Key, value: *Value) Self {
             return .{ .Occupied = OccupiedEntry(Key, Value).new(key, value) };
         }
@@ -36,6 +46,7 @@ pub fn Entry(comptime K: type, comptime V: type) type {
             };
         }
 
+        /// Insert new value and returns a pointer to the value held in the Node.
         pub fn insert(self: *Self, value: Value) Allocator.Error!*Value {
             switch (self.*) {
                 .Vacant => |*vacant| {
