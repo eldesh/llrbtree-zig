@@ -25,8 +25,8 @@ pub fn LLRBTreeSet(comptime T: type) type {
     comptime assert(Con.isPartialOrd(T));
 
     return struct {
-        pub const Self = @This();
-        pub const Item = T;
+        pub const Self: type = @This();
+        pub const Item: type = T;
 
         // tree implementation
         const Node = node.Node(Item);
