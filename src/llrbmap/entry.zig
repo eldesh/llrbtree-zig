@@ -39,6 +39,7 @@ pub fn Entry(comptime K: type, comptime V: type) type {
             return .{ .Occupied = OccupiedEntry(Key, Value).new(key, value) };
         }
 
+        /// Get pointer to key
         pub fn get_key(self: *const Self) *const Key {
             return switch (self.*) {
                 .Vacant => |*vacant| vacant.get_key(),
@@ -46,7 +47,9 @@ pub fn Entry(comptime K: type, comptime V: type) type {
             };
         }
 
-        /// Insert new value and returns a pointer to the value held in the Node.
+        /// Inserts a new value and returns a pointer to the value held by the Node.
+        /// If the node is a vacant entry, `value` is inserted and a pointer to the value is returned.
+        /// If it is an occupied entry, `value` is inserted and and the old value held by the entry is returned.
         pub fn insert(self: *Self, value: Value) Allocator.Error!*Value {
             switch (self.*) {
                 .Vacant => |*vacant| {
@@ -61,6 +64,18 @@ pub fn Entry(comptime K: type, comptime V: type) type {
             }
         }
 
+        /// Update a value with function `f` if the entry is occupied.
+        ///
+        /// ```zig
+        /// var map = LLRBTreeMap(u32, []const u8).new(testing.allocator);
+        /// defer map.destroy();
+        /// _ = try map.insert(42, "foo");
+        /// var entry_ = map.entry(42);
+        /// _ = entry_.modify(struct {
+        ///     fn bar(s: *[]const u8) void { s.* = "bar"; }
+        /// }.bar);
+        /// try testing.expectEqualStrings("bar", map.get(&@as(u32, 42)).?.*);
+        /// ```
         pub fn modify(self: *Self, f: fn (*Value) void) *Self {
             switch (self.*) {
                 .Occupied => |*occupied| f(occupied.get_value_mut()),
@@ -71,6 +86,8 @@ pub fn Entry(comptime K: type, comptime V: type) type {
     };
 }
 
+/// An empty entry associated with a key.
+/// It is able to insert a new value for the key.
 pub fn VacantEntry(comptime K: type, comptime V: type) type {
     return struct {
         pub const Self: type = @This();
@@ -87,7 +104,7 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
         key: Key,
         inserted: bool,
 
-        pub fn new(stack: Stack, allocator: Allocator, key: Key) Self {
+        fn new(stack: Stack, allocator: Allocator, key: Key) Self {
             {
                 var muts = stack;
                 assert(muts.force_peek().* == null);
@@ -136,6 +153,9 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
     };
 }
 
+/// Occupancy entry specified by key.
+/// It is able to be updated the value for the key.
+/// Bacause it must be maintained order relation, the key is not able to be updated.
 pub fn OccupiedEntry(comptime K: type, comptime V: type) type {
     return struct {
         pub const Self: type = @This();
@@ -145,7 +165,7 @@ pub fn OccupiedEntry(comptime K: type, comptime V: type) type {
         key: *const Key,
         value: *Value,
 
-        pub fn new(key: *const Key, value: *Value) Self {
+        fn new(key: *const Key, value: *Value) Self {
             return .{ .key = key, .value = value };
         }
 
@@ -161,6 +181,7 @@ pub fn OccupiedEntry(comptime K: type, comptime V: type) type {
             return self.value;
         }
 
+        /// Inserts a new value for the key.
         pub fn insert(self: *Self, value: Value) Value {
             const old = self.value.*;
             self.value.* = value;

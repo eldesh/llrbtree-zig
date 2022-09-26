@@ -27,9 +27,12 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
     comptime assert(Con.isPartialOrd(K));
 
     return struct {
-        pub const Self = @This();
-        pub const Key = K;
-        pub const Value = V;
+        /// The type `LLRBTreeMap` itself
+        pub const Self: type = @This();
+        /// Type of keys to ordering values.
+        pub const Key: type = K;
+        /// Type of values to be stored in the container.
+        pub const Value: type = V;
 
         // tree implementation
         const Node = node.Node(Key, Value);
@@ -444,7 +447,6 @@ test "entry" {
     const rand = std.rand;
     const Array = std.ArrayList;
     const allocator = testing.allocator;
-    // const print = std.debug.print;
 
     {
         var tree = LLRBTreeMap(i32, i32).new(testing.allocator);
@@ -506,6 +508,18 @@ test "entry" {
             if (tree.delete(&v)) |rm|
                 assert(v == rm);
         }
+    }
+    {
+        var map = LLRBTreeMap(u32, []const u8).new(testing.allocator);
+        defer map.destroy();
+        _ = try map.insert(42, "foo");
+        var entry_ = map.entry(42);
+        _ = entry_.modify(struct {
+            fn bar(s: *[]const u8) void {
+                s.* = "bar";
+            }
+        }.bar);
+        try testing.expectEqualStrings("bar", map.get(&@as(u32, 42)).?.*);
     }
 }
 

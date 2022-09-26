@@ -38,6 +38,11 @@ pub fn LLRBTreeSet(comptime T: type) type {
             return .{ .allocator = allocator, .root = null };
         }
 
+        /// Destroy the Set
+        ///
+        /// # Details
+        /// Deallocates memory of all remaining nodes in the Map.
+        /// Memory owned by values are not released.
         pub fn destroy(self: *Self) void {
             Node.check_inv(self.root);
             Node.destroy(self.root, self.allocator);
