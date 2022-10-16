@@ -64,6 +64,8 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return &self.item;
         }
 
+        /// Checks whether the node satisfies invariants of the LLRB.
+        /// This function is performed only when this library is built in Debug mode.
         pub fn check_inv(self: ?*Self) void {
             // enabled only when Debug mode
             if (comptime builtin.mode != std.builtin.Mode.Debug)
