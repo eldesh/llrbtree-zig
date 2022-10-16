@@ -2,6 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Con = @import("basis_concept");
 const node_color = @import("../node_color.zig");
+const string_cmp = @import("../string_cmp.zig");
 const node = @import("./node.zig");
 pub const iters = @import("./iter.zig");
 
@@ -142,28 +143,6 @@ pub fn LLRBTreeSet(comptime T: type) type {
     };
 }
 
-// utility for unit tests
-const string_cmp = struct {
-    // string comparison
-    fn cmp(x: *const []const u8, y: *const []const u8) Order {
-        const xlen = x.*.len;
-        const ylen = y.*.len;
-        switch (std.math.order(xlen, ylen)) {
-            .lt => return .lt,
-            .gt => return .gt,
-            else => {},
-        }
-        for (x.*) |xc, i| {
-            switch (std.math.order(xc, y.*[i])) {
-                .lt => return .lt,
-                .gt => return .gt,
-                else => {},
-            }
-        }
-        return .eq;
-    }
-};
-
 test "simple insert" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -213,7 +192,7 @@ test "insert (set of string)" {
     var rng = rand.DefaultPrng.init(0);
     const random = rng.random();
     const num: usize = 20;
-    var set = Set.with_cmp(allocator, string_cmp.cmp);
+    var set = Set.with_cmp(allocator, string_cmp.order);
     defer set.destroy();
     defer while (set.delete_min()) |m| allocator.free(m);
 
@@ -342,7 +321,7 @@ test "delete_min" {
         const random = rng.random();
         const num: usize = 4096;
 
-        var tree = Tree.with_cmp(allocator, string_cmp.cmp);
+        var tree = Tree.with_cmp(allocator, string_cmp.order);
         defer tree.destroy();
 
         var values = Array([]const u8).init(allocator);
@@ -367,7 +346,7 @@ test "delete_min" {
             // const p = @mod(j, num / 10) == 0;
             if (tree.delete_min()) |rm| {
                 // if (p) std.debug.print("v: {}th... {s}\n", .{ j, rm });
-                try testing.expectEqual(Order.lt, string_cmp.cmp(&min, &rm));
+                try testing.expectEqual(Order.lt, string_cmp.order(&min, &rm));
                 min = rm;
             } else {
                 // if (p) std.debug.print("v: {}th... none\n", .{j});

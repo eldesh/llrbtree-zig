@@ -1,6 +1,7 @@
 const std = @import("std");
 const Con = @import("basis_concept");
 const node_color = @import("../node_color.zig");
+const string_cmp = @import("../string_cmp.zig");
 const node = @import("./node.zig");
 pub const key_value = @import("./key_value.zig");
 pub const entry = @import("./entry.zig");
@@ -244,6 +245,34 @@ test "insert" {
         if (try tree.insert(v, v)) |x| {
             // std.debug.print("already exist: {}\n", .{old});
             try testing.expectEqual(v, x);
+        }
+    }
+}
+
+test "insert (string key)" {
+    const fmt = std.fmt;
+    const testing = std.testing;
+    const rand = std.rand;
+    const allocator = testing.allocator;
+
+    const Map = LLRBTreeMap([]const u8, u32);
+    var rng = rand.DefaultPrng.init(0);
+    const random = rng.random();
+    const num: usize = 20;
+    var map = Map.with_cmp(allocator, string_cmp.order);
+    defer map.destroy();
+    defer while (map.delete_min()) |kv| allocator.free(kv.toTuple()[0]);
+
+    var i: usize = 0;
+    while (i < num) : (i += 1) {
+        const v: u32 = random.int(u4);
+        const k = try fmt.allocPrint(allocator, "key{}", .{v});
+        // std.debug.print("v: {}th... \"{s}\" ==> {}\n", .{ i, k, v });
+        if (map.get(&k)) |_| {
+            // std.debug.print("already exist value for: \"{s}\"\n", .{k});
+            allocator.free(k);
+        } else {
+            try testing.expect(null == try map.insert(k, v));
         }
     }
 }
