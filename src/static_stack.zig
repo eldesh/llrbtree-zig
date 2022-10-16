@@ -1,5 +1,10 @@
 const std = @import("std");
 
+/// Fixed size stack
+///
+/// # Argument
+/// - T: the type of the vlaues held on the stack.
+/// - N: the maximum number of elements held on the stack.
 pub fn StaticStack(comptime T: type, comptime N: comptime_int) type {
     return struct {
         pub const Self: type = @This();
