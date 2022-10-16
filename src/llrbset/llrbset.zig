@@ -142,6 +142,28 @@ pub fn LLRBTreeSet(comptime T: type) type {
     };
 }
 
+// utility for unit tests
+const string_cmp = struct {
+    // string comparison
+    fn cmp(x: *const []const u8, y: *const []const u8) Order {
+        const xlen = x.*.len;
+        const ylen = y.*.len;
+        switch (std.math.order(xlen, ylen)) {
+            .lt => return .lt,
+            .gt => return .gt,
+            else => {},
+        }
+        for (x.*) |xc, i| {
+            switch (std.math.order(xc, y.*[i])) {
+                .lt => return .lt,
+                .gt => return .gt,
+                else => {},
+            }
+        }
+        return .eq;
+    }
+};
+
 test "simple insert" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -175,8 +197,34 @@ test "insert" {
         const v = @as(u32, random.int(u4));
         // std.debug.print("v: {}th... {}\n", .{ i, v });
         if (try tree.insert(v)) |x| {
-            // std.debug.print("already exist: {}\n", .{old});
+            // std.debug.print("already exist: {}\n", .{x});
             try testing.expectEqual(v, x);
+        }
+    }
+}
+
+test "insert (set of string)" {
+    const fmt = std.fmt;
+    const testing = std.testing;
+    const rand = std.rand;
+    const allocator = testing.allocator;
+
+    const Set = LLRBTreeSet([]const u8);
+    var rng = rand.DefaultPrng.init(0);
+    const random = rng.random();
+    const num: usize = 20;
+    var set = Set.with_cmp(allocator, string_cmp.cmp);
+    defer set.destroy();
+    defer while (set.delete_min()) |m| allocator.free(m);
+
+    var i: usize = 0;
+    while (i < num) : (i += 1) {
+        const v = try fmt.allocPrint(allocator, "value{}", .{random.int(u4)});
+        // std.debug.print("v: {}th... \"{s}\"\n", .{ i, v });
+        if (try set.insert(v)) |x| {
+            // std.debug.print("already exist: \"{s}\"\n", .{x});
+            try testing.expectEqualStrings(v, x);
+            allocator.free(x);
         }
     }
 }
@@ -245,13 +293,14 @@ test "get" {
 }
 
 test "delete_min" {
+    const fmt = std.fmt;
     const testing = std.testing;
     const rand = std.rand;
     const Array = std.ArrayList;
     const allocator = testing.allocator;
 
-    const Tree = LLRBTreeSet(u32);
     {
+        const Tree = LLRBTreeSet(u32);
         var rng = rand.DefaultPrng.init(0);
         const random = rng.random();
         const num: usize = 4096;
@@ -284,6 +333,44 @@ test "delete_min" {
                 min = rm;
             } else {
                 // if (p) std.debug.print("v: {}th... none\n", .{i});
+            }
+        }
+    }
+    {
+        const Tree = LLRBTreeSet([]const u8);
+        var rng = rand.DefaultPrng.init(0);
+        const random = rng.random();
+        const num: usize = 4096;
+
+        var tree = Tree.with_cmp(allocator, string_cmp.cmp);
+        defer tree.destroy();
+
+        var values = Array([]const u8).init(allocator);
+        defer values.deinit();
+        defer while (values.popOrNull()) |m| allocator.free(m);
+
+        var i: usize = 0;
+        while (i < num) : (i += 1) {
+            const v = try fmt.allocPrint(allocator, "value{}", .{random.int(u32)});
+            // if (@mod(i, num / 10) == 0)
+            //     std.debug.print("v: {}th... {}\n", .{ i, v });
+            try values.append(v);
+            if (try tree.insert(v)) |old|
+                allocator.free(old);
+        }
+
+        assert(tree.root != null);
+
+        var min: []const u8 = ("".*)[0..];
+        for (values.items) |_, j| {
+            _ = j;
+            // const p = @mod(j, num / 10) == 0;
+            if (tree.delete_min()) |rm| {
+                // if (p) std.debug.print("v: {}th... {s}\n", .{ j, rm });
+                try testing.expectEqual(Order.lt, string_cmp.cmp(&min, &rm));
+                min = rm;
+            } else {
+                // if (p) std.debug.print("v: {}th... none\n", .{j});
             }
         }
     }
