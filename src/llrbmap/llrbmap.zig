@@ -22,9 +22,9 @@ const Entry = entry.Entry;
 ///
 /// # Requirements
 /// `K` is a type for which an ordering relation is given.
-/// This means `Con.isPartialOrd(K)` evaluates to `true`.
+/// This means `Con.isOrd(K)` evaluates to `true`.
 pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
-    comptime assert(Con.isPartialOrd(K));
+    comptime assert(Con.isOrd(K));
 
     return struct {
         /// The type `LLRBTreeMap` itself

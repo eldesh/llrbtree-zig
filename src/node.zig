@@ -149,7 +149,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         pub fn contains_key(self: ?*const Self, key: *const Key) bool {
             var node = self;
             while (node) |n| {
-                switch (Con.PartialOrd.on(*const Key)(key, Self.get_key(&n.item)).?) {
+                switch (Con.Ord.on(*const Key)(key, Self.get_key(&n.item))) {
                     .lt => node = n.lnode,
                     .eq => return true,
                     .gt => node = n.rnode,
@@ -161,7 +161,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         pub fn get(self: ?*const Self, key: *const Key) ?*const T {
             var node = self;
             while (node) |n| {
-                switch (Con.PartialOrd.on(*const Key)(key, Self.get_key(&n.item)).?) {
+                switch (Con.Ord.on(*const Key)(key, Self.get_key(&n.item))) {
                     .lt => node = n.lnode,
                     .eq => return &n.item,
                     .gt => node = n.rnode,
@@ -247,7 +247,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             check_inv(node);
 
             var old: ?T = null;
-            switch (Con.PartialOrd.on(*const Key)(Self.get_key(&item), Self.get_key(&node.item)).?) {
+            switch (Con.Ord.on(*const Key)(Self.get_key(&item), Self.get_key(&node.item))) {
                 .lt => old = try insert(&node.lnode, allocator, item),
                 .eq => {
                     old = node.item;
@@ -305,7 +305,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             var h = self.*.?;
             // removed value if it found
             var old: ?T = null;
-            if (Con.PartialOrd.on(*const Key)(key, Self.get_key(&h.item)).?.compare(.lt)) {
+            if (Con.Ord.on(*const Key)(key, Self.get_key(&h.item)).compare(.lt)) {
                 // not found the value `value.*`
                 if (h.lnode == null) {
                     return null;
@@ -324,7 +324,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 // Therefore `h` is not right rotated.
 
                 // Found a node to be deleted on the leaf
-                if (Con.PartialOrd.on(*const Key)(key, Self.get_key(&h.item)).?.compare(.eq) and h.rnode == null) {
+                if (Con.Ord.on(*const Key)(key, Self.get_key(&h.item)).compare(.eq) and h.rnode == null) {
                     assert(h.lnode == null);
                     old = h.item;
                     allocator.destroy(h);
@@ -342,14 +342,14 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                     // These conditions are able to be represented as formally:
                     // `(value != h.value \/ rnode != null) /\ rnode = null`
                     // Then the condition `value != h.value` is satisfied.
-                    assert(Con.PartialOrd.on(*const Key)(key, Self.get_key(&h.item)).?.compare(.neq));
+                    assert(Con.Ord.on(*const Key)(key, Self.get_key(&h.item)).compare(.neq));
                     return null;
                 }
 
                 if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
                     h = h.move_redright();
 
-                if (Con.PartialOrd.on(*const Key)(key, Self.get_key(&h.item)).?.compare(.eq)) {
+                if (Con.Ord.on(*const Key)(key, Self.get_key(&h.item)).compare(.eq)) {
                     // const rm = h.rnode.?.min();
                     // h.key = rm.key;
                     old = h.item;

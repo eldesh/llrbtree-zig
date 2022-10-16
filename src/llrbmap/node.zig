@@ -34,7 +34,7 @@ fn NodeKeyValue(comptime Self: type) type {
             var stack = StaticStack(*?*Self, Self.MaxPathLength).new();
             stack.force_push(self);
             while ((stack.force_peek()).*) |n| {
-                switch (Con.PartialOrd.on(*const Key)(&key, Self.get_key(&n.item)).?) {
+                switch (Con.Ord.on(*const Key)(&key, Self.get_key(&n.item))) {
                     .lt => {
                         // print("{} < {}\n", .{ key, Self.get_key(&n.item).* });
                         stack.force_push(&n.lnode);

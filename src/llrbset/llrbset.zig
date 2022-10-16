@@ -20,9 +20,9 @@ const NodeColor = node_color.NodeColor;
 /// All values are stored based on it's order relation.
 ///
 /// # Requirements
-/// `T` is a type and that must have an order relation defined by `Con.isPartialOrd`.
+/// `T` is a type and that must have an order relation defined by `Con.isOrd`.
 pub fn LLRBTreeSet(comptime T: type) type {
-    comptime assert(Con.isPartialOrd(T));
+    comptime assert(Con.isOrd(T));
 
     return struct {
         pub const Self: type = @This();
