@@ -6,9 +6,8 @@ pub const key_value = @import("./key_value.zig");
 pub const entry = @import("./entry.zig");
 pub const iters = @import("./iter.zig");
 
-const math = std.math;
-
 const Allocator = std.mem.Allocator;
+const Order = std.math.Order;
 
 const assert = std.debug.assert;
 
@@ -24,10 +23,9 @@ const Entry = entry.Entry;
 ///
 /// Note that the releation must be total ordering.
 /// If `basis_concept.isOrd(K)` evaluates to `true`, then the automatically derived total function is used.
-/// Otherwise, an ordering function must be explicitly passed.
+/// Otherwise, an ordering function must be explicitly passed via `with_cmp`.
 ///
 /// # Arguments
-///
 /// - `K`: type of keys, and a total ordering releation must be defined.
 /// - `V`: type of values.
 pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
@@ -44,11 +42,17 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
 
         allocator: Allocator,
         root: ?*Node,
-        cmp: fn (*const K, *const K) math.Order,
+        cmp: fn (*const K, *const K) Order,
 
         /// Build a Map by passing an allocator that allocates memory for internal nodes.
         pub fn new(allocator: Allocator) Self {
             return .{ .allocator = allocator, .root = null, .cmp = Con.Ord.on(*const K) };
+        }
+
+        /// Build a Map like `new`, but takes an order function explicitly.
+        /// The function must be a total order.
+        pub fn with_cmp(allocator: Allocator, cmp: fn (*const K, *const K) Order) Self {
+            return .{ .allocator = allocator, .root = null, .cmp = cmp };
         }
 
         /// Destroy the Map

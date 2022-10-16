@@ -5,9 +5,8 @@ const node_color = @import("../node_color.zig");
 const node = @import("./node.zig");
 pub const iters = @import("./iter.zig");
 
-const math = std.math;
-
 const Allocator = std.mem.Allocator;
+const Order = std.math.Order;
 
 const assert = std.debug.assert;
 
@@ -19,11 +18,13 @@ const NodeColor = node_color.NodeColor;
 /// This function returns that a value container using Left-leaning Red-Black Tree algorithm.
 /// All values are stored based on it's order relation.
 ///
-/// # Requirements
-/// `T` is a type and that must have an order relation defined by `Con.isOrd`.
+/// Note that the releation must be total ordering.
+/// If `basis_concept.isOrd(T)` evaluates to `true`, then the automatically derived total function is used.
+/// Otherwise, an ordering function must be explicitly passed via `with_cmp`.
+///
+/// # Arguments
+/// - `T`: type of values, and a total ordering releation must be defined.
 pub fn LLRBTreeSet(comptime T: type) type {
-    comptime assert(Con.isOrd(T));
-
     return struct {
         pub const Self: type = @This();
         pub const Item: type = T;
@@ -33,10 +34,17 @@ pub fn LLRBTreeSet(comptime T: type) type {
 
         allocator: Allocator,
         root: ?*Node,
-        cmp: fn (*const T, *const T) math.Order,
+        cmp: fn (*const T, *const T) Order,
 
+        /// Build a Set by passing an allocator that allocates memory for internal nodes.
         pub fn new(allocator: Allocator) Self {
             return .{ .allocator = allocator, .root = null, .cmp = Con.Ord.on(*const T) };
+        }
+
+        /// Build a Set of T like `new`, but takes an order function explicitly.
+        /// The function must be a total order.
+        pub fn with_cmp(allocator: Allocator, cmp: fn (*const T, *const T) Order) Self {
+            return .{ .allocator = allocator, .root = null, .cmp = cmp };
         }
 
         /// Destroy the Set
