@@ -6,6 +6,8 @@ pub const key_value = @import("./key_value.zig");
 pub const entry = @import("./entry.zig");
 pub const iters = @import("./iter.zig");
 
+const math = std.math;
+
 const Allocator = std.mem.Allocator;
 
 const assert = std.debug.assert;
@@ -20,12 +22,15 @@ const Entry = entry.Entry;
 /// This function returns that a key/value container using Left-leaning Red-Black Tree algorithm.
 /// All values are associated for each keys, and all key/value pairs are stored based on order relation of the keys.
 ///
-/// # Requirements
-/// `K` is a type for which an ordering relation is given.
-/// This means `Con.isOrd(K)` evaluates to `true`.
+/// Note that the releation must be total ordering.
+/// If `basis_concept.isOrd(K)` evaluates to `true`, then the automatically derived total function is used.
+/// Otherwise, an ordering function must be explicitly passed.
+///
+/// # Arguments
+///
+/// - `K`: type of keys, and a total ordering releation must be defined.
+/// - `V`: type of values.
 pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
-    comptime assert(Con.isOrd(K));
-
     return struct {
         /// The type `LLRBTreeMap` itself
         pub const Self: type = @This();
@@ -39,10 +44,11 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
 
         allocator: Allocator,
         root: ?*Node,
+        cmp: fn (*const K, *const K) math.Order,
 
         /// Build a Map by passing an allocator that allocates memory for internal nodes.
         pub fn new(allocator: Allocator) Self {
-            return .{ .allocator = allocator, .root = null };
+            return .{ .allocator = allocator, .root = null, .cmp = Con.Ord.on(*const K) };
         }
 
         /// Destroy the Map
@@ -113,7 +119,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Otherwise, `null` is returned.
         pub fn insert(self: *Self, key: Key, value: Value) Allocator.Error!?Value {
             Node.check_inv(self.root);
-            const oldopt = try Node.insert(&self.root, self.allocator, key_value.make(key, value));
+            const oldopt = try Node.insert(&self.root, self.allocator, key_value.make(key, value), self.cmp);
             self.root.?.color = .Black;
             Node.check_inv(self.root);
             return if (oldopt) |old| old.toTuple()[1] else null;
@@ -138,7 +144,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// If it is not found, `null` is returned.
         pub fn delete_entry(self: *Self, key: *const Key) ?KeyValue(Key, Value) {
             Node.check_inv(self.root);
-            const old = Node.delete(&self.root, self.allocator, key);
+            const old = Node.delete(&self.root, self.allocator, key, self.cmp);
             if (self.root) |sroot|
                 sroot.color = .Black;
             Node.check_inv(self.root);
@@ -176,14 +182,14 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Checks to see if it contains a value for the specified `key`.
         pub fn contains_key(self: *const Self, key: *const Key) bool {
             Node.check_inv(self.root);
-            return Node.contains_key(self.root, key);
+            return Node.contains_key(self.root, key, self.cmp);
         }
 
         /// Checks whether a node contains a value equal to `value` and returns a pointer to that value.
         /// If not found, returns `null`.
         pub fn get(self: *const Self, key: *const Key) ?*const Value {
             Node.check_inv(self.root);
-            return if (Node.get(self.root, key)) |kv| kv.value() else null;
+            return if (Node.get(self.root, key, self.cmp)) |kv| kv.value() else null;
         }
 
         /// Get an entry specified with `key`

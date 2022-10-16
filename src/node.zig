@@ -5,6 +5,7 @@ const node_color = @import("./node_color.zig");
 const key_value = @import("./llrbmap/key_value.zig");
 
 const Allocator = std.mem.Allocator;
+const Order = std.math.Order;
 
 const assert = std.debug.assert;
 
@@ -146,10 +147,10 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             }
         }
 
-        pub fn contains_key(self: ?*const Self, key: *const Key) bool {
+        pub fn contains_key(self: ?*const Self, key: *const Key, cmp: fn (*const Key, *const Key) Order) bool {
             var node = self;
             while (node) |n| {
-                switch (Con.Ord.on(*const Key)(key, Self.get_key(&n.item))) {
+                switch (cmp(key, Self.get_key(&n.item))) {
                     .lt => node = n.lnode,
                     .eq => return true,
                     .gt => node = n.rnode,
@@ -158,10 +159,10 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return false;
         }
 
-        pub fn get(self: ?*const Self, key: *const Key) ?*const T {
+        pub fn get(self: ?*const Self, key: *const Key, cmp: fn (*const Key, *const Key) Order) ?*const T {
             var node = self;
             while (node) |n| {
-                switch (Con.Ord.on(*const Key)(key, Self.get_key(&n.item))) {
+                switch (cmp(key, Self.get_key(&n.item))) {
                     .lt => node = n.lnode,
                     .eq => return &n.item,
                     .gt => node = n.rnode,
@@ -237,7 +238,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return h;
         }
 
-        pub fn insert(self: *?*Self, allocator: Allocator, item: T) Allocator.Error!?T {
+        pub fn insert(self: *?*Self, allocator: Allocator, item: T, cmp: fn (*const Key, *const Key) Order) Allocator.Error!?T {
             if (self.* == null) {
                 self.* = try Self.new(allocator, item, null, null);
                 return null;
@@ -247,13 +248,13 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             check_inv(node);
 
             var old: ?T = null;
-            switch (Con.Ord.on(*const Key)(Self.get_key(&item), Self.get_key(&node.item))) {
-                .lt => old = try insert(&node.lnode, allocator, item),
+            switch (cmp(Self.get_key(&item), Self.get_key(&node.item))) {
+                .lt => old = try insert(&node.lnode, allocator, item, cmp),
                 .eq => {
                     old = node.item;
                     node.item = item;
                 },
-                .gt => old = try insert(&node.rnode, allocator, item),
+                .gt => old = try insert(&node.rnode, allocator, item, cmp),
             }
 
             self.* = node.fixup();
@@ -298,21 +299,21 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return h;
         }
 
-        pub fn delete(self: *?*Self, allocator: Allocator, key: *const Key) ?T {
+        pub fn delete(self: *?*Self, allocator: Allocator, key: *const Key, cmp: fn (*const Key, *const Key) Order) ?T {
             if (self.* == null)
                 return null;
 
             var h = self.*.?;
             // removed value if it found
             var old: ?T = null;
-            if (Con.Ord.on(*const Key)(key, Self.get_key(&h.item)).compare(.lt)) {
+            if (cmp(key, Self.get_key(&h.item)).compare(.lt)) {
                 // not found the value `value.*`
                 if (h.lnode == null) {
                     return null;
                 }
                 if (!isRed(h.lnode) and !isRed(h.lnode.?.lnode))
                     h = h.move_redleft();
-                old = delete(&h.lnode, allocator, key);
+                old = delete(&h.lnode, allocator, key, cmp);
             } else {
                 if (isRed(h.lnode)) {
                     // right-leaning 3node
@@ -324,7 +325,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 // Therefore `h` is not right rotated.
 
                 // Found a node to be deleted on the leaf
-                if (Con.Ord.on(*const Key)(key, Self.get_key(&h.item)).compare(.eq) and h.rnode == null) {
+                if (cmp(key, Self.get_key(&h.item)).compare(.eq) and h.rnode == null) {
                     assert(h.lnode == null);
                     old = h.item;
                     allocator.destroy(h);
@@ -342,20 +343,20 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                     // These conditions are able to be represented as formally:
                     // `(value != h.value \/ rnode != null) /\ rnode = null`
                     // Then the condition `value != h.value` is satisfied.
-                    assert(Con.Ord.on(*const Key)(key, Self.get_key(&h.item)).compare(.neq));
+                    assert(cmp(key, Self.get_key(&h.item)).compare(.neq));
                     return null;
                 }
 
                 if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
                     h = h.move_redright();
 
-                if (Con.Ord.on(*const Key)(key, Self.get_key(&h.item)).compare(.eq)) {
+                if (cmp(key, Self.get_key(&h.item)).compare(.eq)) {
                     // const rm = h.rnode.?.min();
                     // h.key = rm.key;
                     old = h.item;
                     h.item = delete_min(&h.rnode, allocator).?;
                 } else {
-                    old = delete(&h.rnode, allocator, key);
+                    old = delete(&h.rnode, allocator, key, cmp);
                 }
             }
             self.* = h.fixup();

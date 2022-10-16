@@ -33,9 +33,10 @@ pub fn LLRBTreeSet(comptime T: type) type {
 
         allocator: Allocator,
         root: ?*Node,
+        cmp: fn (*const T, *const T) math.Order,
 
         pub fn new(allocator: Allocator) Self {
-            return .{ .allocator = allocator, .root = null };
+            return .{ .allocator = allocator, .root = null, .cmp = Con.Ord.on(*const T) };
         }
 
         /// Destroy the Set
@@ -69,11 +70,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Otherwise, `null` is returned.
         pub fn insert(self: *Self, value: T) Allocator.Error!?T {
             Node.check_inv(self.root);
-            const old = try Node.insert(
-                &self.root,
-                self.allocator,
-                value,
-            );
+            const old = try Node.insert(&self.root, self.allocator, value, self.cmp);
             self.root.?.color = .Black;
             Node.check_inv(self.root);
             return old;
@@ -87,7 +84,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// If it is not found, `null` is returned.
         pub fn delete(self: *Self, value: *const T) ?T {
             Node.check_inv(self.root);
-            const old = Node.delete(&self.root, self.allocator, value);
+            const old = Node.delete(&self.root, self.allocator, value, self.cmp);
             if (self.root) |sroot|
                 sroot.color = .Black;
             Node.check_inv(self.root);
@@ -125,14 +122,14 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Checks to see if it contains a node with a value equal to `value`.
         pub fn contains(self: *const Self, value: *const T) bool {
             Node.check_inv(self.root);
-            return Node.contains_key(self.root, value);
+            return Node.contains_key(self.root, value, self.cmp);
         }
 
         /// Checks whether a node contains a value equal to `value` and returns a pointer to that value.
         /// If not found, returns `null`.
         pub fn get(self: *const Self, value: *const T) ?*const T {
             Node.check_inv(self.root);
-            return Node.get(self.root, value);
+            return Node.get(self.root, value, self.cmp);
         }
     };
 }
