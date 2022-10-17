@@ -205,7 +205,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Otherwise, a [`entry.Entry.Vacant`] entry is returned.
         pub fn entry(self: *Self, key: Key) Entry(Key, Value) {
             Node.check_inv(self.root);
-            return Node.entry(&self.root, self.allocator, key);
+            return Node.entry(&self.root, self.allocator, key, self.cmp);
         }
     };
 }

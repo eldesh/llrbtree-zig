@@ -1,5 +1,4 @@
 const std = @import("std");
-const Con = @import("basis_concept");
 
 const key_value = @import("./key_value.zig");
 const node = @import("../node.zig");
@@ -7,6 +6,7 @@ const entry = @import("./entry.zig");
 const static_stack = @import("../static_stack.zig");
 
 const Allocator = std.mem.Allocator;
+const Order = std.math.Order;
 const Entry = entry.Entry;
 const StaticStack = static_stack.StaticStack;
 
@@ -30,11 +30,11 @@ fn NodeKeyValue(comptime Self: type) type {
             return item.value();
         }
 
-        pub fn entry(self: *?*Self, allocator: Allocator, key: Key) Entry(Key, Value) {
+        pub fn entry(self: *?*Self, allocator: Allocator, key: Key, cmp: fn (*const Key, *const Key) Order) Entry(Key, Value) {
             var stack = StaticStack(*?*Self, Self.MaxPathLength).new();
             stack.force_push(self);
-            while ((stack.force_peek()).*) |n| {
-                switch (Con.Ord.on(*const Key)(&key, Self.get_key(&n.item))) {
+            while (stack.force_peek().*) |n| {
+                switch (cmp(&key, Self.get_key(&n.item))) {
                     .lt => {
                         // print("{} < {}\n", .{ key, Self.get_key(&n.item).* });
                         stack.force_push(&n.lnode);
