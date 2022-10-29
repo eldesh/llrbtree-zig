@@ -1,5 +1,8 @@
+const std = @import("std");
 const node = @import("./node.zig");
 const iter = @import("../iter.zig");
+
+const Allocator = std.mem.Allocator;
 
 /// Make an iterator enumerates all key/value pairs of a `LLRBTreeMap` by ascending order.
 ///
@@ -15,8 +18,8 @@ const iter = @import("../iter.zig");
 ///   _ = item.value();
 /// }
 /// ```
-pub fn Iter(comptime K: type, comptime V: type) type {
-    return iter.Iter(node.Node(K, V), *const node.Node(K, V).Item);
+pub fn Iter(comptime K: type, comptime V: type, comptime A: Allocator) type {
+    return iter.Iter(node.Node(K, V, A), *const node.Node(K, V, A).Item);
 }
 
 /// Make an iterator enumerates all keys of a `LLRBTreeMap` by ascending order.
@@ -32,8 +35,8 @@ pub fn Iter(comptime K: type, comptime V: type) type {
 ///   _ = key;
 /// }
 /// ```
-pub fn Keys(comptime K: type, comptime V: type) type {
-    return iter.Iter(node.Node(K, V), *const K);
+pub fn Keys(comptime K: type, comptime V: type, comptime A: Allocator) type {
+    return iter.Iter(node.Node(K, V, A), *const K);
 }
 
 /// Make an iterator enumerates all values of a `LLRBTreeMap` by ascending order of associated keys.
@@ -49,6 +52,6 @@ pub fn Keys(comptime K: type, comptime V: type) type {
 ///   _ = value;
 /// }
 /// ```
-pub fn Values(comptime K: type, comptime V: type) type {
-    return iter.Iter(node.Node(K, V), *const V);
+pub fn Values(comptime K: type, comptime V: type, comptime A: Allocator) type {
+    return iter.Iter(node.Node(K, V, A), *const V);
 }

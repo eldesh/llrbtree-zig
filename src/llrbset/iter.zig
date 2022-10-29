@@ -1,3 +1,4 @@
+const std = @import("std");
 const iter = @import("../iter.zig");
 const node = @import("./node.zig");
 
@@ -14,6 +15,6 @@ const node = @import("./node.zig");
 ///   _ = item;
 /// }
 /// ```
-pub fn Iter(comptime V: type) type {
-    return iter.Iter(node.Node(V), *const V);
+pub fn Iter(comptime V: type, comptime A: std.mem.Allocator) type {
+    return iter.Iter(node.Node(V, A), *const V);
 }

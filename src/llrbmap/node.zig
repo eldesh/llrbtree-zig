@@ -17,6 +17,7 @@ fn NodeKeyValue(comptime Self: type) type {
     const Item = Self.Item;
     const Key = Self.Item.Key;
     const Value = Self.Item.Value;
+    const Alloc = Self.Alloc;
     return struct {
         pub fn get_key(item: *const Item) *const Key {
             return item.key();
@@ -30,7 +31,7 @@ fn NodeKeyValue(comptime Self: type) type {
             return item.value();
         }
 
-        pub fn entry(self: *?*Self, allocator: Allocator, key: Key, cmp: fn (*const Key, *const Key) Order) Entry(Key, Value) {
+        pub fn entry(self: *?*Self, key: Key, cmp: fn (*const Key, *const Key) Order) Entry(Key, Value, Alloc) {
             var stack = StaticStack(*?*Self, Self.MaxPathLength).new();
             stack.force_push(self);
             while (stack.force_peek().*) |n| {
@@ -41,7 +42,7 @@ fn NodeKeyValue(comptime Self: type) type {
                     },
                     .eq => {
                         // print("found: {}\n", .{key});
-                        return Entry(Key, Value).new_occupied(n.item.key(), n.item.value_mut());
+                        return Entry(Key, Value, Alloc).new_occupied(n.item.key(), n.item.value_mut());
                     },
                     .gt => {
                         // print("{} > {}\n", .{ key, Self.get_key(&n.item).* });
@@ -51,11 +52,11 @@ fn NodeKeyValue(comptime Self: type) type {
             }
             // not found a value associated for the key
             // print("not found: {}\n", .{key});
-            return Entry(Key, Value).new_vacant(stack, allocator, key);
+            return Entry(Key, Value, Alloc).new_vacant(stack, key);
         }
     };
 }
 
-pub fn Node(comptime Key: type, comptime Value: type) type {
-    return node.Node(NodeKeyValue, key_value.KeyValue(Key, Value), Key);
+pub fn Node(comptime Key: type, comptime Value: type, comptime Alloc: Allocator) type {
+    return node.Node(NodeKeyValue, key_value.KeyValue(Key, Value), Key, Alloc);
 }

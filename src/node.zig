@@ -32,10 +32,11 @@ pub const InvariantError = error{
 ///   Type of value held on Node.
 /// - `Key`
 ///   Type of value projected for ordering from `T`.
-pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: type) type {
+pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: type, comptime A: Allocator) type {
     return struct {
-        pub const Self = @This();
-        pub const Item = T;
+        pub const Self: type = @This();
+        pub const Item: type = T;
+        pub const Alloc: Allocator = A;
         /// The depth of stack for iterating trees
         ///
         /// # Details
@@ -67,7 +68,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
 
         /// Checks whether the node satisfies invariants of the LLRB.
         /// This function is performed only when this library is built in Debug mode.
-        pub fn check_inv(self: ?*Self) void {
+        pub fn check_inv(self: ?*const Self) void {
             // enabled only when Debug mode
             if (comptime builtin.mode != std.builtin.Mode.Debug)
                 return;
@@ -129,21 +130,24 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 try lnode.check_perfect_black_balance();
         }
 
-        pub fn new(alloc: Allocator, item: T, lnode: ?*Self, rnode: ?*Self) Allocator.Error!*Self {
-            var node = try alloc.create(Self);
+        pub fn new(item: T, lnode: ?*Self, rnode: ?*Self) Allocator.Error!*Self {
+            var node = try Alloc.create(Self);
             node.* = .{ .color = .Red, .item = item, .lnode = lnode, .rnode = rnode };
             check_inv(node);
             return node;
         }
 
-        pub fn destroy(self: ?*Self, allocator: Allocator) void {
+        pub fn destroy(self: *Self, allocator: Allocator) void {
             check_inv(self);
-            if (self) |node| {
-                destroy(node.lnode, allocator);
-                node.lnode = null;
-                destroy(node.rnode, allocator);
-                node.rnode = null;
-                allocator.destroy(node);
+            if (self.lnode) |lnode| {
+                lnode.destroy(allocator);
+                allocator.destroy(lnode);
+                self.lnode = null;
+            }
+            if (self.rnode) |rnode| {
+                rnode.destroy(allocator);
+                allocator.destroy(rnode);
+                self.rnode = null;
             }
         }
 
@@ -238,9 +242,9 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return h;
         }
 
-        pub fn insert(self: *?*Self, allocator: Allocator, item: T, cmp: fn (*const Key, *const Key) Order) Allocator.Error!?T {
+        pub fn insert(self: *?*Self, item: T, cmp: fn (*const Key, *const Key) Order) Allocator.Error!?T {
             if (self.* == null) {
-                self.* = try Self.new(allocator, item, null, null);
+                self.* = try Self.new(item, null, null);
                 return null;
             }
 
@@ -249,12 +253,12 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
 
             var old: ?T = null;
             switch (cmp(Self.get_key(&item), Self.get_key(&node.item))) {
-                .lt => old = try insert(&node.lnode, allocator, item, cmp),
+                .lt => old = try insert(&node.lnode, item, cmp),
                 .eq => {
                     old = node.item;
                     node.item = item;
                 },
-                .gt => old = try insert(&node.rnode, allocator, item, cmp),
+                .gt => old = try insert(&node.rnode, item, cmp),
             }
 
             self.* = node.fixup();
@@ -299,7 +303,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return h;
         }
 
-        pub fn delete(self: *?*Self, allocator: Allocator, key: *const Key, cmp: fn (*const Key, *const Key) Order) ?T {
+        pub fn delete(self: *?*Self, key: *const Key, cmp: fn (*const Key, *const Key) Order) ?T {
             if (self.* == null)
                 return null;
 
@@ -313,7 +317,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 }
                 if (!isRed(h.lnode) and !isRed(h.lnode.?.lnode))
                     h = h.move_redleft();
-                old = delete(&h.lnode, allocator, key, cmp);
+                old = delete(&h.lnode, key, cmp);
             } else {
                 if (isRed(h.lnode)) {
                     // right-leaning 3node
@@ -328,7 +332,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 if (cmp(key, Self.get_key(&h.item)).compare(.eq) and h.rnode == null) {
                     assert(h.lnode == null);
                     old = h.item;
-                    allocator.destroy(h);
+                    Alloc.destroy(h);
                     self.* = null;
                     return old;
                 }
@@ -354,9 +358,9 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                     // const rm = h.rnode.?.min();
                     // h.key = rm.key;
                     old = h.item;
-                    h.item = delete_min(&h.rnode, allocator).?;
+                    h.item = delete_min(&h.rnode).?;
                 } else {
-                    old = delete(&h.rnode, allocator, key, cmp);
+                    old = delete(&h.rnode, key, cmp);
                 }
             }
             self.* = h.fixup();
@@ -368,7 +372,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         // # Details
         // Delete the min value from the tree `self` and returns the removed value.
         // If the tree is empty, `null` is returned.
-        pub fn delete_min(self: *?*Self, allocator: Allocator) ?T {
+        pub fn delete_min(self: *?*Self) ?T {
             if (self.* == null)
                 return null;
 
@@ -378,7 +382,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 // std.debug.print("delete_min: lnode=null: {}\n", .{h.value});
                 old = h.item;
                 assert(h.rnode == null);
-                allocator.destroy(h);
+                Alloc.destroy(h);
                 self.* = null;
                 return old;
             }
@@ -396,7 +400,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 h = h.move_redleft();
             }
 
-            old = delete_min(&h.lnode, allocator);
+            old = delete_min(&h.lnode);
             self.* = h.fixup();
             return old;
         }
@@ -409,7 +413,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         //
         // Move red link down/right to tree.
         // Because removing a black link breaks balance.
-        pub fn delete_max(self: *?*Self, allocator: Allocator) ?T {
+        pub fn delete_max(self: *?*Self) ?T {
             if (self.* == null)
                 return null;
 
@@ -426,7 +430,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 // std.debug.print("delete_max: {}\n", .{h.value});
                 old = h.item;
                 assert(h.lnode == null);
-                allocator.destroy(h);
+                Alloc.destroy(h);
                 self.* = null;
                 return old;
             }
@@ -439,7 +443,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             if (!isRed(h.rnode) and !isRed(h.rnode.?.lnode))
                 h = h.move_redright();
 
-            old = delete_max(&h.rnode, allocator);
+            old = delete_max(&h.rnode);
             self.* = h.fixup();
             return old;
         }
