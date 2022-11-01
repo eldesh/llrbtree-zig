@@ -32,11 +32,13 @@ pub const InvariantError = error{
 ///   Type of value held on Node.
 /// - `Key`
 ///   Type of value projected for ordering from `T`.
-pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: type, comptime A: Allocator) type {
+pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: type, comptime A: Allocator, comptime Config: type) type {
     return struct {
         pub const Self: type = @This();
         pub const Item: type = T;
         pub const Alloc: Allocator = A;
+        pub const Config: type = Config;
+
         /// The depth of stack for iterating trees
         ///
         /// # Details
@@ -137,16 +139,17 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return node;
         }
 
-        pub fn destroy(self: *Self, allocator: Allocator) void {
+        pub fn destroy(self: *Self, comptime C: type, config: *const C) void {
             check_inv(self);
             if (self.lnode) |lnode| {
-                lnode.destroy(allocator);
-                allocator.destroy(lnode);
+                lnode.destroy(C, config);
+                Alloc.destroy(lnode);
                 self.lnode = null;
             }
+            self.destroy_item(config);
             if (self.rnode) |rnode| {
-                rnode.destroy(allocator);
-                allocator.destroy(rnode);
+                rnode.destroy(C, config);
+                Alloc.destroy(rnode);
                 self.rnode = null;
             }
         }

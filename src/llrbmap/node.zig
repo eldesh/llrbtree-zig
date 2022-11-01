@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const config = @import("config.zig");
 const key_value = @import("./key_value.zig");
 const node = @import("../node.zig");
 const entry = @import("./entry.zig");
@@ -14,10 +15,13 @@ const print = std.debug.print;
 
 /// Derive methods defined only for Node specified for Key/Value type.
 fn NodeKeyValue(comptime Self: type) type {
+    // short hands
     const Item = Self.Item;
     const Key = Self.Item.Key;
     const Value = Self.Item.Value;
     const Alloc = Self.Alloc;
+    const Config = Self.Config;
+
     return struct {
         pub fn get_key(item: *const Item) *const Key {
             return item.key();
@@ -29,6 +33,15 @@ fn NodeKeyValue(comptime Self: type) type {
 
         pub fn get_value_mut(item: *Item) *Value {
             return item.value();
+        }
+
+        pub fn destroy_item(self: *Self, cfg: *const Config) void {
+            var tup = self.item.toTuple();
+            if (cfg.key_is_owned)
+                Con.Destroy.destroy(tup[0], cfg.key_alloc);
+
+            if (cfg.value_is_owned)
+                Con.Destroy.destroy(tup[1], cfg.value_alloc);
         }
 
         pub fn entry(self: *?*Self, key: Key, cmp: fn (*const Key, *const Key) Order) Entry(Key, Value, Alloc) {
@@ -58,5 +71,5 @@ fn NodeKeyValue(comptime Self: type) type {
 }
 
 pub fn Node(comptime Key: type, comptime Value: type, comptime Alloc: Allocator) type {
-    return node.Node(NodeKeyValue, key_value.KeyValue(Key, Value), Key, Alloc);
+    return node.Node(NodeKeyValue, key_value.KeyValue(Key, Value), Key, Alloc, config.Config(Alloc));
 }

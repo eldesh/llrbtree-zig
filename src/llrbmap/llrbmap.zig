@@ -3,6 +3,8 @@ const Con = @import("basis_concept");
 const node_color = @import("../node_color.zig");
 const string_cmp = @import("../string_cmp.zig");
 const node = @import("./node.zig");
+
+pub const config = @import("./config.zig");
 pub const key_value = @import("./key_value.zig");
 pub const entry = @import("./entry.zig");
 pub const iters = @import("./iter.zig");
@@ -42,28 +44,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type, comptime A: Allocator) ty
         pub const Alloc: Allocator = A;
 
         /// Type of configuration parameters
-        pub const Config: type = struct {
-            /// Allocators for keys.
-            /// Defaults to `Alloc`.
-            key_alloc: Allocator = Alloc,
-            /// Allocators for values.
-            /// Defaults to `Alloc`.
-            value_alloc: Allocator = Alloc,
-            /// Flag to toggle whether keys are owned by the map.
-            /// Defaults to `true`.
-            key_is_owned: bool = true,
-            /// Flag to toggle whether values are owned by the map.
-            /// Defaults to `true`.
-            value_is_owned: bool = true,
-
-            pub fn key_allocator(self: *Self) ?Allocator {
-                return if (self.key_is_owned) self.key_alloc else null;
-            }
-
-            pub fn value_allocator(self: *Self) ?Allocator {
-                return if (self.value_is_owned) self.value_alloc else null;
-            }
-        };
+        pub const Config: type = config.Config(Alloc);
 
         // tree implementation
         const Node = node.Node(Key, Value, Alloc);
@@ -72,17 +53,17 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type, comptime A: Allocator) ty
 
         root: ?*Node,
         cmp: fn (*const K, *const K) Order,
-        config: Config,
+        cfg: Config,
 
         /// Build a Map by passing an allocator that allocates memory for internal nodes.
-        pub fn new(config: Config) Self {
-            return .{ .root = null, .cmp = Con.Ord.on(*const K), .config = config };
+        pub fn new(cfg: Config) Self {
+            return .{ .root = null, .cmp = Con.Ord.on(*const K), .cfg = cfg };
         }
 
         /// Build a Map like `new`, but takes an order function explicitly.
         /// The function must be a total order.
-        pub fn with_cmp(config: Config, cmp: fn (*const K, *const K) Order) Self {
-            return .{ .root = null, .cmp = cmp, .config = config };
+        pub fn with_cmp(cfg: Config, cmp: fn (*const K, *const K) Order) Self {
+            return .{ .root = null, .cmp = cmp, .cfg = cfg };
         }
 
         /// Destroy the Map
@@ -93,7 +74,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type, comptime A: Allocator) ty
         pub fn destroy(self: *Self) void {
             Node.check_inv(self.root);
             if (self.root) |root| {
-                root.destroy(Alloc);
+                root.destroy(Config, &self.cfg);
                 Alloc.destroy(root);
                 self.root = null;
             }

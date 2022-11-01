@@ -1,9 +1,11 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const Con = @import("basis_concept");
+
 const node_color = @import("../node_color.zig");
 const string_cmp = @import("../string_cmp.zig");
 const node = @import("./node.zig");
+pub const config = @import("./config.zig");
 pub const iters = @import("./iter.zig");
 
 const Allocator = std.mem.Allocator;
@@ -35,31 +37,24 @@ pub fn LLRBTreeSet(comptime T: type, comptime A: Allocator) type {
         pub const Alloc: Allocator = A;
 
         /// Type of configuration parameters
-        pub const Config: type = struct {
-            /// Allocators for items.
-            /// Defaults to `Alloc`.
-            item_alloc: Allocator = Alloc,
-            /// Flag to toggle whether values are owned by the set.
-            /// Defaults to `true`.
-            item_is_owned: bool = true,
-        };
+        pub const Config: type = config.Config(Alloc);
 
         // tree implementation
         const Node = node.Node(Item, Alloc);
 
         root: ?*Node,
         cmp: fn (*const T, *const T) Order,
-        config: Config,
+        cfg: Config,
 
         /// Build a Set by passing an allocator that allocates memory for internal nodes.
-        pub fn new(config: Config) Self {
-            return .{ .root = null, .cmp = Con.Ord.on(*const T), .config = config };
+        pub fn new(cfg: Config) Self {
+            return .{ .root = null, .cmp = Con.Ord.on(*const T), .cfg = cfg };
         }
 
         /// Build a Set of T like `new`, but takes an order function explicitly.
         /// The function must be a total order.
-        pub fn with_cmp(config: Config, cmp: fn (*const T, *const T) Order) Self {
-            return .{ .root = null, .cmp = cmp, .config = config };
+        pub fn with_cmp(cfg: Config, cmp: fn (*const T, *const T) Order) Self {
+            return .{ .root = null, .cmp = cmp, .cfg = cfg };
         }
 
         /// Destroy the Set
@@ -70,7 +65,7 @@ pub fn LLRBTreeSet(comptime T: type, comptime A: Allocator) type {
         pub fn destroy(self: *Self) void {
             Node.check_inv(self.root);
             if (self.root) |root| {
-                root.destroy(Alloc);
+                root.destroy(Config, &self.cfg);
                 Alloc.destroy(root);
                 self.root = null;
             }
