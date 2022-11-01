@@ -214,9 +214,31 @@ test "insert (set of string)" {
         if (try set.insert(v)) |x| {
             // std.debug.print("already exist: \"{s}\"\n", .{x});
             try testing.expectEqualStrings(v, x);
-            allocator.free(x);
+            Con.Destroy.destroy(x, allocator);
         }
     }
+}
+
+test "insert (set of not owned string)" {
+    const fmt = std.fmt;
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const Set = LLRBTreeSet([]const u8, allocator);
+    const num: usize = 20;
+    var set = Set.with_cmp(.{ .item_is_owned = false }, string_cmp.order);
+    defer set.destroy();
+
+    var keys: [num][]const u8 = undefined;
+    var i: usize = 0;
+    while (i < num) : (i += 1) {
+        keys[i] = try fmt.allocPrint(allocator, "value{}", .{i});
+        // std.debug.print("v: {}th... \"{s}\"\n", .{ i, v });
+    }
+    defer for (keys) |key| allocator.free(key);
+
+    for (keys) |key|
+        try testing.expectEqual(@as(?Set.Item, null), try set.insert(key));
 }
 
 test "contains" {
