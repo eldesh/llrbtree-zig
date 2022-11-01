@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const Con = @import("basis_concept");
-const node_color = @import("./node_color.zig");
+const color = @import("./color.zig");
 const key_value = @import("./llrbmap/key_value.zig");
 
 const Allocator = std.mem.Allocator;
@@ -9,7 +9,7 @@ const Order = std.math.Order;
 
 const assert = std.debug.assert;
 
-const NodeColor = node_color.NodeColor;
+const Color = color.Color;
 pub const KeyValue = key_value.KeyValue;
 
 /// Errors for invariant violation errors.
@@ -53,7 +53,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         pub usingnamespace Derive(@This());
 
         /// color of the incoming link (from parent)
-        color: NodeColor,
+        color: Color,
         item: T,
         /// left child node
         lnode: ?*Self,

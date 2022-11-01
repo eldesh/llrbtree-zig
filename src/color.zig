@@ -1,4 +1,4 @@
-pub const NodeColor = enum {
+pub const Color = enum {
     Red,
     Black,
 
