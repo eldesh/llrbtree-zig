@@ -1,4 +1,7 @@
 const std = @import("std");
+
+const Con = @import("basis_concept");
+
 const config = @import("config.zig");
 const node = @import("../node.zig");
 

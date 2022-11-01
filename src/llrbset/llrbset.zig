@@ -206,7 +206,6 @@ test "insert (set of string)" {
     const num: usize = 20;
     var set = Set.with_cmp(.{}, string_cmp.order);
     defer set.destroy();
-    defer while (set.delete_min()) |m| allocator.free(m);
 
     var i: usize = 0;
     while (i < num) : (i += 1) {

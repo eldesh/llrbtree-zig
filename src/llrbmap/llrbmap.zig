@@ -40,7 +40,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type, comptime A: Allocator) ty
         pub const Key: type = K;
         /// Type of values to be stored in the container.
         pub const Value: type = V;
-        /// Type of allocator to allocate memory for internal Nodes.
+        /// The allocator to allocate memory for internal Nodes.
         pub const Alloc: Allocator = A;
 
         /// Type of configuration parameters
@@ -140,7 +140,12 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type, comptime A: Allocator) ty
             const oldopt = try Node.insert(&self.root, key_value.make(key, value), self.cmp);
             self.root.?.color = .Black;
             Node.check_inv(self.root);
-            return if (oldopt) |old| old.toTuple()[1] else null;
+            if (oldopt) |old| {
+                const tup = old.toTuple();
+                if (self.cfg.key_is_owned)
+                    Con.Destroy.destroy(tup[0], self.cfg.key_alloc);
+                return tup[1];
+            } else return null;
         }
 
         /// Delete a value for the specified `key`.
@@ -235,7 +240,7 @@ test "simple insert" {
     var values = [_]u32{ 0, 1, 2, 3, 4 };
 
     for (values) |v|
-        try testing.expectEqual(try tree.insert(v, v), null);
+        try testing.expectEqual(@as(?u32, null), try tree.insert(v, v));
 }
 
 test "insert" {
@@ -262,7 +267,30 @@ test "insert" {
     }
 }
 
-test "insert (string key)" {
+test "insert (not owned string key)" {
+    const fmt = std.fmt;
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const Map = LLRBTreeMap([]const u8, u32, allocator);
+    const num: usize = 20;
+    var keys: [num][]const u8 = undefined;
+    {
+        var i: usize = 0;
+        while (i < num) : (i = i + 1)
+            keys[i] = try fmt.allocPrint(allocator, "key{}", .{i});
+    }
+    defer for (keys) |key| Con.Destroy.destroy(key, allocator);
+
+    // the Map not owned keys
+    var map = Map.with_cmp(.{ .key_is_owned = false }, string_cmp.order);
+    defer map.destroy();
+
+    for (keys) |key, i|
+        try testing.expect(null == try map.insert(key, @intCast(u32, i)));
+}
+
+test "insert (owned string key)" {
     const fmt = std.fmt;
     const testing = std.testing;
     const rand = std.rand;
@@ -274,20 +302,41 @@ test "insert (string key)" {
     const num: usize = 20;
     var map = Map.with_cmp(.{}, string_cmp.order);
     defer map.destroy();
-    defer while (map.delete_min()) |kv| allocator.free(kv.toTuple()[0]);
 
     var i: usize = 0;
     while (i < num) : (i += 1) {
         const v: u32 = random.int(u4);
         const k = try fmt.allocPrint(allocator, "key{}", .{v});
         // std.debug.print("v: {}th... \"{s}\" ==> {}\n", .{ i, k, v });
-        if (map.get(&k)) |_| {
-            // std.debug.print("already exist value for: \"{s}\"\n", .{k});
-            allocator.free(k);
-        } else {
-            try testing.expect(null == try map.insert(k, v));
+        if (try map.insert(k, v)) |old| {
+            try testing.expect(map.get(&k) != null);
+            // std.debug.print("already exist value for: \"{}\"\n", .{old});
+            Con.Destroy.destroy(old, allocator);
         }
     }
+}
+
+test "insert (not owned value)" {
+    const fmt = std.fmt;
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const Map = LLRBTreeMap(u32, []const u8, allocator);
+    const num: usize = 20;
+    var values: [num][]const u8 = undefined;
+    {
+        var i: usize = 0;
+        while (i < num) : (i = i + 1)
+            values[i] = try fmt.allocPrint(allocator, "key{}", .{i});
+    }
+    defer for (values) |value| Con.Destroy.destroy(value, allocator);
+
+    // the Map not owned keys
+    var map = Map.new(.{ .value_is_owned = false });
+    defer map.destroy();
+
+    for (values) |value, i|
+        try testing.expect(null == try map.insert(@intCast(u32, i), value));
 }
 
 test "contains_key" {
@@ -562,7 +611,7 @@ test "entry" {
         }
     }
     {
-        var map = LLRBTreeMap(u32, []const u8, allocator).new(.{});
+        var map = LLRBTreeMap(u32, []const u8, allocator).new(.{ .value_is_owned = false });
         defer map.destroy();
         _ = try map.insert(42, "foo");
         var entry_ = map.entry(42);

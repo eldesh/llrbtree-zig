@@ -1,4 +1,5 @@
 const std = @import("std");
+const Con = @import("basis_concept");
 
 const config = @import("config.zig");
 const key_value = @import("./key_value.zig");
