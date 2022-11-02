@@ -2,7 +2,7 @@ id: lu1ckabhn47tfk105immoona1s7x9wq6lz7z447tql39ekms
 name: rbtree-zig
 main: src/main.zig
 license: BSD-2-Clause
-description: A Red-Black tree implementation
+description: A container data structure implementation using Left Leaning Red-Black tree .
 root_dependencies:
   - src: git git@github.com:eldesh/basis_concept-zig commit-v1.1
 dependencies:
