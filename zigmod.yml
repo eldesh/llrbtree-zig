@@ -4,6 +4,6 @@ main: src/main.zig
 license: BSD-2-Clause
 description: A Red-Black tree implementation
 root_dependencies:
-  - src: git git@github.com:eldesh/basis_concept-zig commit-v1.0
+  - src: git git@github.com:eldesh/basis_concept-zig commit-v1.1
 dependencies:
-  - src: git git@github.com:eldesh/basis_concept-zig commit-v1.0
+  - src: git git@github.com:eldesh/basis_concept-zig commit-v1.1
