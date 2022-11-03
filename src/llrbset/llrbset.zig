@@ -20,11 +20,11 @@ const assert = std.debug.assert;
 /// All values are stored based on it's order relation.
 ///
 /// Note that the releation must be total ordering.
-/// If `basis_concept.isOrd(T)` evaluates to `true`, then the automatically derived total function is used.
+/// If `basis_concept.isOrd(T)` evaluates to `true`, then the automatically derived ordering function is used.
 /// Otherwise, an ordering function must be explicitly passed via `with_cmp`.
 ///
 /// # Arguments
-/// - `T`: type of values, and a total ordering releation must be defined.
+/// - `T`: type of value to be held in the container, for which a total ordering relation must be defined.
 pub fn LLRBTreeSet(comptime T: type) type {
     return struct {
         /// The type `LLRBTreeSet` itself
@@ -36,6 +36,8 @@ pub fn LLRBTreeSet(comptime T: type) type {
 
         /// Type of ownership configuration parameters
         pub const Config: type = Node.Config;
+        /// Shorthand for representing that the items in this set are not owned.
+        pub const NotOwned: Config = Config{ .item = .NotOwned };
 
         alloc: Allocator,
         root: ?*Node,
@@ -222,7 +224,7 @@ test "insert (set of not owned string)" {
 
     const Set = LLRBTreeSet([]const u8);
     const num: usize = 20;
-    var set = Set.with_cmp(alloc, .{ .item = .NotOwned }, string_cmp.order);
+    var set = Set.with_cmp(alloc, Set.NotOwned, string_cmp.order);
     defer set.destroy();
 
     var keys: [num][]const u8 = undefined;
