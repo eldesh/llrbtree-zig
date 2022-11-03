@@ -31,8 +31,7 @@ const Entry = entry.Entry;
 /// # Arguments
 /// - `K`: type of keys, and a total ordering releation must be defined.
 /// - `V`: type of values.
-/// - `A`: allocator allocates memory for inner nodes of data structures.
-pub fn LLRBTreeMap(comptime K: type, comptime V: type, comptime A: Allocator) type {
+pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
     return struct {
         /// The type `LLRBTreeMap` itself
         pub const Self: type = @This();
@@ -41,7 +40,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type, comptime A: Allocator) ty
         /// Type of values to be stored in the container.
         pub const Value: type = V;
         /// The allocator to allocate memory for internal Nodes.
-        pub const Alloc: Allocator = A;
+        pub const Alloc: Allocator = std.testing.allocator;
 
         /// Type of configuration parameters
         pub const Config: type = config.Config(Alloc);
@@ -51,19 +50,20 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type, comptime A: Allocator) ty
 
         pub const NotOwned: Config = Config{ .key_is_owned = false, .value_is_owned = false };
 
+        alloc: Allocator,
         root: ?*Node,
         cmp: fn (*const K, *const K) Order,
         cfg: Config,
 
         /// Build a Map by passing an allocator that allocates memory for internal nodes.
-        pub fn new(cfg: Config) Self {
-            return .{ .root = null, .cmp = Con.Ord.on(*const K), .cfg = cfg };
+        pub fn new(alloc: Allocator, cfg: Config) Self {
+            return .{ .alloc = alloc, .root = null, .cmp = Con.Ord.on(*const K), .cfg = cfg };
         }
 
         /// Build a Map like `new`, but takes an order function explicitly.
         /// The function must be a total order.
-        pub fn with_cmp(cfg: Config, cmp: fn (*const K, *const K) Order) Self {
-            return .{ .root = null, .cmp = cmp, .cfg = cfg };
+        pub fn with_cmp(alloc: Allocator, cfg: Config, cmp: fn (*const K, *const K) Order) Self {
+            return .{ .alloc = alloc, .root = null, .cmp = cmp, .cfg = cfg };
         }
 
         /// Destroy the Map
@@ -75,7 +75,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type, comptime A: Allocator) ty
             Node.check_inv(self.root);
             if (self.root) |root| {
                 root.destroy(Config, &self.cfg);
-                Alloc.destroy(root);
+                self.alloc.destroy(root);
                 self.root = null;
             }
         }
@@ -230,11 +230,11 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type, comptime A: Allocator) ty
 
 test "simple insert" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Tree = LLRBTreeMap(u32, u32, allocator);
+    const Tree = LLRBTreeMap(u32, u32);
 
-    var tree = Tree.new(.{});
+    var tree = Tree.new(alloc, .{});
     defer tree.destroy();
 
     var values = [_]u32{ 0, 1, 2, 3, 4 };
@@ -246,14 +246,14 @@ test "simple insert" {
 test "insert" {
     const testing = std.testing;
     const rand = std.rand;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Tree = LLRBTreeMap(u32, u32, allocator);
+    const Tree = LLRBTreeMap(u32, u32);
     var rng = rand.DefaultPrng.init(0);
     const random = rng.random();
     const num: usize = 20;
 
-    var tree = Tree.new(.{});
+    var tree = Tree.new(alloc, .{});
     defer tree.destroy();
 
     var i: usize = 0;
@@ -270,20 +270,20 @@ test "insert" {
 test "insert (not owned string key)" {
     const fmt = std.fmt;
     const testing = std.testing;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Map = LLRBTreeMap([]const u8, u32, allocator);
+    const Map = LLRBTreeMap([]const u8, u32);
     const num: usize = 20;
     var keys: [num][]const u8 = undefined;
     {
         var i: usize = 0;
         while (i < num) : (i = i + 1)
-            keys[i] = try fmt.allocPrint(allocator, "key{}", .{i});
+            keys[i] = try fmt.allocPrint(alloc, "key{}", .{i});
     }
-    defer for (keys) |key| Con.Destroy.destroy(key, allocator);
+    defer for (keys) |key| Con.Destroy.destroy(key, alloc);
 
     // the Map not owned keys
-    var map = Map.with_cmp(.{ .key_is_owned = false }, string_cmp.order);
+    var map = Map.with_cmp(alloc, .{ .key_is_owned = false }, string_cmp.order);
     defer map.destroy();
 
     for (keys) |key, i|
@@ -294,24 +294,24 @@ test "insert (owned string key)" {
     const fmt = std.fmt;
     const testing = std.testing;
     const rand = std.rand;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Map = LLRBTreeMap([]const u8, u32, allocator);
+    const Map = LLRBTreeMap([]const u8, u32);
     var rng = rand.DefaultPrng.init(0);
     const random = rng.random();
     const num: usize = 20;
-    var map = Map.with_cmp(.{}, string_cmp.order);
+    var map = Map.with_cmp(alloc, .{}, string_cmp.order);
     defer map.destroy();
 
     var i: usize = 0;
     while (i < num) : (i += 1) {
         const v: u32 = random.int(u4);
-        const k = try fmt.allocPrint(allocator, "key{}", .{v});
+        const k = try fmt.allocPrint(alloc, "key{}", .{v});
         // std.debug.print("v: {}th... \"{s}\" ==> {}\n", .{ i, k, v });
         if (try map.insert(k, v)) |old| {
             try testing.expect(map.get(&k) != null);
             // std.debug.print("already exist value for: \"{}\"\n", .{old});
-            Con.Destroy.destroy(old, allocator);
+            Con.Destroy.destroy(old, alloc);
         }
     }
 }
@@ -319,20 +319,20 @@ test "insert (owned string key)" {
 test "insert (not owned value)" {
     const fmt = std.fmt;
     const testing = std.testing;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Map = LLRBTreeMap(u32, []const u8, allocator);
+    const Map = LLRBTreeMap(u32, []const u8);
     const num: usize = 20;
     var values: [num][]const u8 = undefined;
     {
         var i: usize = 0;
         while (i < num) : (i = i + 1)
-            values[i] = try fmt.allocPrint(allocator, "key{}", .{i});
+            values[i] = try fmt.allocPrint(alloc, "key{}", .{i});
     }
-    defer for (values) |value| Con.Destroy.destroy(value, allocator);
+    defer for (values) |value| Con.Destroy.destroy(value, alloc);
 
     // the Map not owned keys
-    var map = Map.new(.{ .value_is_owned = false });
+    var map = Map.new(alloc, .{ .value_is_owned = false });
     defer map.destroy();
 
     for (values) |value, i|
@@ -342,19 +342,19 @@ test "insert (not owned value)" {
 test "contains_key" {
     const testing = std.testing;
     const rand = std.rand;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
     const Array = std.ArrayList;
-    const Tree = LLRBTreeMap(u32, u32, allocator);
+    const Tree = LLRBTreeMap(u32, u32);
 
     var rng = rand.DefaultPrng.init(0);
     const random = rng.random();
     const num: usize = 2000;
 
-    var tree = Tree.new(.{});
+    var tree = Tree.new(alloc, .{});
     defer tree.destroy();
 
-    var values = Array(u32).init(allocator);
+    var values = Array(u32).init(alloc);
     defer values.deinit();
 
     var i: usize = 0;
@@ -373,19 +373,19 @@ test "contains_key" {
 test "get" {
     const testing = std.testing;
     const rand = std.rand;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
     const Array = std.ArrayList;
-    const Tree = LLRBTreeMap(u32, u32, allocator);
+    const Tree = LLRBTreeMap(u32, u32);
 
     var rng = rand.DefaultPrng.init(0);
     const random = rng.random();
     const num: usize = 2000;
 
-    var tree = Tree.new(.{});
+    var tree = Tree.new(alloc, .{});
     defer tree.destroy();
 
-    var values = Array(u32).init(allocator);
+    var values = Array(u32).init(alloc);
     defer values.deinit();
 
     var i: usize = 0;
@@ -406,18 +406,18 @@ test "delete_min" {
     const testing = std.testing;
     const rand = std.rand;
     const Array = std.ArrayList;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Tree = LLRBTreeMap(u32, u32, allocator);
+    const Tree = LLRBTreeMap(u32, u32);
     {
         var rng = rand.DefaultPrng.init(0);
         const random = rng.random();
         const num: usize = 4096;
 
-        var tree = Tree.new(.{});
+        var tree = Tree.new(alloc, .{});
         defer tree.destroy();
 
-        var values = Array(u32).init(allocator);
+        var values = Array(u32).init(alloc);
         defer values.deinit();
 
         var i: usize = 0;
@@ -451,18 +451,18 @@ test "delete_max" {
     const testing = std.testing;
     const rand = std.rand;
     const Array = std.ArrayList;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Tree = LLRBTreeMap(u32, u32, allocator);
+    const Tree = LLRBTreeMap(u32, u32);
     {
         var rng = rand.DefaultPrng.init(0);
         const random = rng.random();
         const num: usize = 4096;
 
-        var tree = Tree.new(.{});
+        var tree = Tree.new(alloc, .{});
         defer tree.destroy();
 
-        var values = Array(u32).init(allocator);
+        var values = Array(u32).init(alloc);
         defer values.deinit();
 
         var i: usize = 0;
@@ -495,10 +495,10 @@ test "insert / delete" {
     const testing = std.testing;
     const rand = std.rand;
     const Array = std.ArrayList;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
     {
-        var tree = LLRBTreeMap(i32, i32, allocator).new(.{});
+        var tree = LLRBTreeMap(i32, i32).new(alloc, .{});
         // all nodes would be destroyed
         // defer tree.destroy();
         var i: i32 = 0;
@@ -519,11 +519,11 @@ test "insert / delete" {
         const random = rng.random();
         const num: usize = 4096;
 
-        var tree = LLRBTreeMap(u32, u32, allocator).new(.{});
+        var tree = LLRBTreeMap(u32, u32).new(alloc, .{});
         // all nodes would be destroyed
         // defer tree.destroy();
 
-        var values = Array(u32).init(allocator);
+        var values = Array(u32).init(alloc);
         defer values.deinit();
 
         var i: usize = 0;
@@ -547,10 +547,10 @@ test "entry" {
     const testing = std.testing;
     const rand = std.rand;
     const Array = std.ArrayList;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
     {
-        var tree = LLRBTreeMap(i32, i32, allocator).new(.{});
+        var tree = LLRBTreeMap(i32, i32).new(alloc, .{});
         // all nodes would be destroyed
         // defer tree.destroy();
         var i: i32 = 0;
@@ -588,11 +588,11 @@ test "entry" {
         const random = rng.random();
         const num: usize = 4096;
 
-        var tree = LLRBTreeMap(u32, u32, allocator).new(.{});
+        var tree = LLRBTreeMap(u32, u32).new(alloc, .{});
         // all nodes would be destroyed
         // defer tree.destroy();
 
-        var values = Array(u32).init(allocator);
+        var values = Array(u32).init(alloc);
         defer values.deinit();
 
         var i: usize = 0;
@@ -611,7 +611,7 @@ test "entry" {
         }
     }
     {
-        var map = LLRBTreeMap(u32, []const u8, allocator).new(.{ .value_is_owned = false });
+        var map = LLRBTreeMap(u32, []const u8).new(alloc, .{ .value_is_owned = false });
         defer map.destroy();
         _ = try map.insert(42, "foo");
         var entry_ = map.entry(42);
@@ -628,14 +628,14 @@ test "iter" {
     const testing = std.testing;
     const KV = key_value.KeyValue;
     {
-        const Tree = LLRBTreeMap(i32, i32, testing.allocator);
+        const Tree = LLRBTreeMap(i32, i32);
         const kv = struct {
             // specialized to the Key, Value types
             fn constructor(k: Tree.Key, v: Tree.Value) KV(Tree.Key, Tree.Value) {
                 return key_value.make(k, v);
             }
         }.constructor;
-        var tree = Tree.new(.{});
+        var tree = Tree.new(testing.allocator, .{});
         defer tree.destroy();
 
         try testing.expectEqual(try tree.insert(5, 5), null);
@@ -656,7 +656,7 @@ test "iter" {
         try testing.expectEqual(iter.next(), null);
     }
     {
-        var tree = LLRBTreeMap(i32, i32, testing.allocator).new(.{});
+        var tree = LLRBTreeMap(i32, i32).new(testing.allocator, .{});
         defer tree.destroy();
 
         var i: i32 = 0;
@@ -667,7 +667,7 @@ test "iter" {
             try testing.expectEqual(try tree.insert(i, i), null);
 
         var iter = tree.iter();
-        var old: LLRBTreeMap(i32, i32, testing.allocator).Value = -1;
+        var old: LLRBTreeMap(i32, i32).Value = -1;
         while (iter.next()) |item| {
             // std.debug.print("item: {}\n", .{item.*});
             assert(old < item.key().*);
@@ -679,8 +679,8 @@ test "iter" {
 test "keys" {
     const testing = std.testing;
     {
-        const Tree = LLRBTreeMap(i32, i32, testing.allocator);
-        var tree = Tree.new(.{});
+        const Tree = LLRBTreeMap(i32, i32);
+        var tree = Tree.new(testing.allocator, .{});
         defer tree.destroy();
 
         try testing.expectEqual(try tree.insert(5, 5), null);
@@ -701,7 +701,7 @@ test "keys" {
         try testing.expectEqual(keys.next(), null);
     }
     {
-        var tree = LLRBTreeMap(i32, i32, testing.allocator).new(.{});
+        var tree = LLRBTreeMap(i32, i32).new(testing.allocator, .{});
         defer tree.destroy();
 
         var i: i32 = 0;
@@ -712,7 +712,7 @@ test "keys" {
             try testing.expectEqual(try tree.insert(i, i), null);
 
         var keys = tree.keys();
-        var old: LLRBTreeMap(i32, i32, testing.allocator).Value = -1;
+        var old: LLRBTreeMap(i32, i32).Value = -1;
         while (keys.next()) |key| {
             // std.debug.print("item: {}\n", .{item.*});
             assert(old < key.*);
@@ -724,8 +724,8 @@ test "keys" {
 test "value" {
     const testing = std.testing;
     {
-        const Tree = LLRBTreeMap(i32, i32, testing.allocator);
-        var tree = Tree.new(.{});
+        const Tree = LLRBTreeMap(i32, i32);
+        var tree = Tree.new(testing.allocator, .{});
         defer tree.destroy();
 
         try testing.expectEqual(try tree.insert(5, 0), null);
@@ -746,7 +746,7 @@ test "value" {
         try testing.expectEqual(values.next(), null);
     }
     {
-        var tree = LLRBTreeMap(i32, i32, testing.allocator).new(.{});
+        var tree = LLRBTreeMap(i32, i32).new(testing.allocator, .{});
         defer tree.destroy();
 
         var i: i32 = 0;
@@ -757,7 +757,7 @@ test "value" {
             try testing.expectEqual(try tree.insert(i, i), null);
 
         var values = tree.values();
-        var old: LLRBTreeMap(i32, i32, testing.allocator).Value = -1;
+        var old: LLRBTreeMap(i32, i32).Value = -1;
         while (values.next()) |val| {
             // std.debug.print("item: {}\n", .{item.*});
             assert(old < val.*);
