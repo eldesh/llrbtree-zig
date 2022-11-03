@@ -21,6 +21,6 @@ pub fn NodeValue(comptime Self: type) type {
     };
 }
 
-pub fn Node(comptime Value: type, comptime Alloc: std.mem.Allocator) type {
-    return node.Node(NodeValue, Value, Value, Alloc, config.Config(Alloc));
+pub fn Node(comptime Value: type) type {
+    return node.Node(NodeValue, Value, Value, config.Config(std.testing.allocator));
 }

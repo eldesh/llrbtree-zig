@@ -18,21 +18,20 @@ const assert = std.debug.assert;
 /// - `Occupied`
 ///   A key/value occupied entry.
 ///   It is able to update the value.
-pub fn Entry(comptime K: type, comptime V: type, comptime A: Allocator) type {
+pub fn Entry(comptime K: type, comptime V: type) type {
     return union(enum) {
         pub const Self: type = @This();
         pub const Key: type = K;
         pub const Value: type = V;
-        pub const Alloc: Allocator = A;
 
-        const Stack = StaticStack(*?*Node(Key, Value, Alloc), Node(Key, Value, Alloc).MaxPathLength);
+        const Stack = StaticStack(*?*Node(Key, Value), Node(Key, Value).MaxPathLength);
 
-        Vacant: VacantEntry(K, V, A),
+        Vacant: VacantEntry(K, V),
         Occupied: OccupiedEntry(K, V),
 
         /// Construct a `Entry.Vacant`.
-        pub fn new_vacant(stack: Stack, key: Key) Self {
-            return .{ .Vacant = VacantEntry(Key, Value, Alloc).new(stack, key) };
+        pub fn new_vacant(stack: Stack, key: Key, alloc: Allocator) Self {
+            return .{ .Vacant = VacantEntry(Key, Value).new(stack, key, alloc) };
         }
 
         /// Construct a `Entry.Occupied`.
@@ -55,7 +54,7 @@ pub fn Entry(comptime K: type, comptime V: type, comptime A: Allocator) type {
             switch (self.*) {
                 .Vacant => |*vacant| {
                     var old = try vacant.insert_entry(value) catch |err| switch (err) {
-                        VacantEntry(K, V, A).Error.AlreadyInserted => unreachable,
+                        VacantEntry(K, V).Error.AlreadyInserted => unreachable,
                         else => |aerr| aerr,
                     };
                     self.* = Self.new_occupied(old.key(), old.value_mut());
@@ -89,28 +88,28 @@ pub fn Entry(comptime K: type, comptime V: type, comptime A: Allocator) type {
 
 /// An empty entry associated with a key.
 /// It is able to insert a new value for the key.
-pub fn VacantEntry(comptime K: type, comptime V: type, comptime A: Allocator) type {
+pub fn VacantEntry(comptime K: type, comptime V: type) type {
     return struct {
         pub const Self: type = @This();
         pub const Key: type = K;
         pub const Value: type = V;
-        pub const Alloc: Allocator = A;
         pub const Error = error{AlreadyInserted} || Allocator.Error;
 
-        const Stack = StaticStack(*?*Node(Key, Value, Alloc), Node(Key, Value, Alloc).MaxPathLength);
+        const Stack = StaticStack(*?*Node(Key, Value), Node(Key, Value).MaxPathLength);
 
         /// # Invariant
         /// `stack.force_peek().* == null`
         stack: Stack,
         key: Key,
         inserted: bool,
+        alloc: Allocator,
 
-        fn new(stack: Stack, key: Key) Self {
+        fn new(stack: Stack, key: Key, alloc: Allocator) Self {
             {
                 var muts = stack;
                 assert(muts.force_peek().* == null);
             }
-            return .{ .stack = stack, .key = key, .inserted = false };
+            return .{ .stack = stack, .key = key, .inserted = false, .alloc = alloc };
         }
 
         pub fn get_key(self: *const Self) *const Key {
@@ -132,7 +131,7 @@ pub fn VacantEntry(comptime K: type, comptime V: type, comptime A: Allocator) ty
             // insert a value to the leaf
             n.* = new: {
                 const kv = key_value.make(self.key, value);
-                var leaf = try node.Node(K, V, A).new(kv, null, null);
+                var leaf = try node.Node(K, V).new(self.alloc, kv, null, null);
                 break :new leaf;
             };
             // hold the pointer to the inserted k/v

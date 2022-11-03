@@ -46,7 +46,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         pub const Config: type = config.Config(Alloc);
 
         // tree implementation
-        const Node = node.Node(Key, Value, Alloc);
+        const Node = node.Node(Key, Value);
 
         pub const NotOwned: Config = Config{ .key_is_owned = false, .value_is_owned = false };
 
@@ -74,7 +74,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         pub fn destroy(self: *Self) void {
             Node.check_inv(self.root);
             if (self.root) |root| {
-                root.destroy(Config, &self.cfg);
+                root.destroy(self.alloc, Config, &self.cfg);
                 self.alloc.destroy(root);
                 self.root = null;
             }
@@ -88,9 +88,9 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         ///
         /// # Notice
         /// The tree must not be modified while the iterator is alive.
-        pub fn iter(self: *const Self) iters.Iter(Key, Value, Alloc) {
+        pub fn iter(self: *const Self) iters.Iter(Key, Value) {
             Node.check_inv(self.root);
-            return iters.Iter(Key, Value, Alloc).new(self.root, Node.get_item);
+            return iters.Iter(Key, Value).new(self.root, Node.get_item);
         }
 
         /// Returns an iterator which enumerates all keys of the tree by ascending order.
@@ -100,14 +100,14 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         ///
         /// # Notice
         /// The tree must not be modified while the iterator is alive.
-        pub fn keys(self: *const Self) iters.Keys(Key, Value, Alloc) {
+        pub fn keys(self: *const Self) iters.Keys(Key, Value) {
             Node.check_inv(self.root);
             const proj = struct {
                 fn key(n: *const Node) *const Key {
                     return Node.get_key(n.get_item());
                 }
             };
-            return iters.Keys(Key, Value, Alloc).new(self.root, proj.key);
+            return iters.Keys(Key, Value).new(self.root, proj.key);
         }
 
         /// Returns an iterator which enumerates all values of the tree.
@@ -118,14 +118,14 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         ///
         /// # Notice
         /// The tree must not be modified while the iterator is alive.
-        pub fn values(self: *const Self) iters.Values(Key, Value, Alloc) {
+        pub fn values(self: *const Self) iters.Values(Key, Value) {
             Node.check_inv(self.root);
             const proj = struct {
                 fn value(n: *const Node) *const Value {
                     return Node.get_value(n.get_item());
                 }
             };
-            return iters.Values(Key, Value, Alloc).new(self.root, proj.value);
+            return iters.Values(Key, Value).new(self.root, proj.value);
         }
 
         /// Insert the `key` and an associated `value` to the tree `self`.
@@ -137,7 +137,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Otherwise, `null` is returned.
         pub fn insert(self: *Self, key: Key, value: Value) Allocator.Error!?Value {
             Node.check_inv(self.root);
-            const oldopt = try Node.insert(&self.root, key_value.make(key, value), self.cmp);
+            const oldopt = try Node.insert(&self.root, self.alloc, key_value.make(key, value), self.cmp);
             self.root.?.color = .Black;
             Node.check_inv(self.root);
             if (oldopt) |old| {
@@ -167,7 +167,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// If it is not found, `null` is returned.
         pub fn delete_entry(self: *Self, key: *const Key) ?KeyValue(Key, Value) {
             Node.check_inv(self.root);
-            const old = Node.delete(&self.root, key, self.cmp);
+            const old = Node.delete(&self.root, self.alloc, key, self.cmp);
             if (self.root) |sroot|
                 sroot.color = .Black;
             Node.check_inv(self.root);
@@ -181,7 +181,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// And `null` is returned for empty tree.
         pub fn delete_min(self: *Self) ?KeyValue(Key, Value) {
             Node.check_inv(self.root);
-            var old = Node.delete_min(&self.root);
+            var old = Node.delete_min(&self.root, self.alloc);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
@@ -195,7 +195,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// And `null` is returned for empty tree.
         pub fn delete_max(self: *Self) ?KeyValue(Key, Value) {
             Node.check_inv(self.root);
-            var old = Node.delete_max(&self.root);
+            var old = Node.delete_max(&self.root, self.alloc);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
@@ -221,9 +221,9 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// Searches for the node specified by `key` and returns the corresponding [`entry.Entry`].
         /// If the node is found, an [`entry.Entry.Occupied`] entry is returned.
         /// Otherwise, a [`entry.Entry.Vacant`] entry is returned.
-        pub fn entry(self: *Self, key: Key) Entry(Key, Value, Alloc) {
+        pub fn entry(self: *Self, key: Key) Entry(Key, Value) {
             Node.check_inv(self.root);
-            return Node.entry(&self.root, key, self.cmp);
+            return Node.entry(&self.root, self.alloc, key, self.cmp);
         }
     };
 }

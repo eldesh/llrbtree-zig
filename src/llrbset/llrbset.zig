@@ -40,7 +40,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         pub const Config: type = config.Config(Alloc);
 
         // tree implementation
-        const Node = node.Node(Item, Alloc);
+        const Node = node.Node(Item);
 
         alloc: Allocator,
         root: ?*Node,
@@ -66,7 +66,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         pub fn destroy(self: *Self) void {
             Node.check_inv(self.root);
             if (self.root) |root| {
-                root.destroy(Config, &self.cfg);
+                root.destroy(self.alloc, Config, &self.cfg);
                 self.alloc.destroy(root);
                 self.root = null;
             }
@@ -78,9 +78,9 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Returns an iterator which enumerates all values of the tree.
         /// The values are enumerated by asceding order.
         /// Also, the tree must no be modified while the iterator is alive.
-        pub fn iter(self: *const Self) iters.Iter(Item, Alloc) {
+        pub fn iter(self: *const Self) iters.Iter(Item) {
             Node.check_inv(self.root);
-            return iters.Iter(Item, Alloc).new(self.root, Node.get_item);
+            return iters.Iter(Item).new(self.root, Node.get_item);
         }
 
         /// Insert the value `value` to the tree `self`.
@@ -92,7 +92,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Otherwise, `null` is returned.
         pub fn insert(self: *Self, value: T) Allocator.Error!?T {
             Node.check_inv(self.root);
-            const old = try Node.insert(&self.root, value, self.cmp);
+            const old = try Node.insert(&self.root, self.alloc, value, self.cmp);
             self.root.?.color = .Black;
             Node.check_inv(self.root);
             return old;
@@ -106,7 +106,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// If it is not found, `null` is returned.
         pub fn delete(self: *Self, value: *const T) ?T {
             Node.check_inv(self.root);
-            const old = Node.delete(&self.root, value, self.cmp);
+            const old = Node.delete(&self.root, self.alloc, value, self.cmp);
             if (self.root) |sroot|
                 sroot.color = .Black;
             Node.check_inv(self.root);
@@ -120,7 +120,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// And `null` is returned for empty tree.
         pub fn delete_min(self: *Self) ?T {
             Node.check_inv(self.root);
-            const old = Node.delete_min(&self.root);
+            const old = Node.delete_min(&self.root, self.alloc);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
@@ -134,7 +134,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// And `null` is returned for empty tree.
         pub fn delete_max(self: *Self) ?T {
             Node.check_inv(self.root);
-            const old = Node.delete_max(&self.root);
+            const old = Node.delete_max(&self.root, self.alloc);
             if (self.root) |root|
                 root.color = .Black;
             Node.check_inv(self.root);
