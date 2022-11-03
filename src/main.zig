@@ -1,59 +1,95 @@
-/// Red-Black tree implementations.
-///
-/// # Modules
-///
-/// - `llrbset`
-///   It is provided that a type of value container implemented by Left-leaning Red-Black Trees data structure.
-/// - `llrbmap`
-///   It is provided that a type of key/value mapping container implemented by Left-leaning Red-Black Trees data structure.
-///
-/// # Left-leaning Red-Black Trees (LLRB)
-///
-/// LLRB tree is a variant of Red-Black Tree.
-/// This data structure restricts the form of the tree, then the number of tree operations are reduced compared to the naive Red-Black Tree.
-///
-/// Also, LLRB tree is a balanced search tree (BST).
-/// Where the 'balanced' means that the ratio of the lenghs of all pathes is within a certain range.
-/// More precisely, LLRB trees have the property that all pathes have exactly the same number of black links.
-/// This is called Perfect Black Balance.
-///
-/// ## Complexity
-///
-/// By the Perfect Black Balance property.
-/// For N elements, all operations are performed:
-/// - Search: O(log(N))
-/// - Insert: O(log(N))
-/// - Delete: O(log(N))
-///
-/// # Cite
-///
-/// [^Sedgewick2008]: Robert Sedgewick, Left-leaning Red-Black Trees, 2008 https://sedgewick.io/wp-content/themes/sedgewick/papers/2008LLRB.pdf
-///
-pub const Self = @This();
+/// An example program use rbtree-zig package.
+const std = @import("std");
+const rbtree = @import("rbtree-zig");
 
-/// A value container implemented by Left-leaning Red-Black Tree implementation.
-///
-/// # Details
-/// This namespace provides a value container type `LLRBTreeSet` using LLRB Tree[^Sedgewick2008].
-/// The container store values using an order relation defined to it.
-pub const llrbset = @import("./llrbset/llrbset.zig");
+const fmt = std.fmt;
+const mem = std.mem;
 
-/// A key/value mapping container implemented by Left-leaning Red-Black Tree implementation.
-///
-/// # Details
-/// This namespace provides a key/value mapping container type `LLRBTreeMap` using LLRB Tree[^Sedgewick2008].
-/// The container store key/value pairs using an order relation defined to the type of the keys.
-/// Then, almost all operations are performed using a key given as a function argument.
-pub const llrbmap = @import("./llrbmap/llrbmap.zig");
+const assert = std.debug.assert;
+const print = std.debug.print;
+const testing = std.testing;
 
-/// State of ownership
-///
-/// # Details
-/// For constructing a value of `LLRBTreeSet` or `LLRBTreeMap`, specify kind of ownership of items held in the container.
-/// When values are owned in the container (i.e. the values should be destoyed with an allocator in the container), `Owned` or `OwnedAlloc` should be used.
-pub const ownership = @import("./ownership.zig");
+/// Overview of Set of values
+fn overview_of_set_features(alloc: mem.Allocator) !void {
+    var set = rbtree.llrbset.LLRBTreeSet(u32).new(alloc, .{});
+    defer set.destroy();
+    // For adding a value, use `insert` function.
+    // The old value would be returned from the function if exists already.
+    _ = try set.insert(5);
+    // the old value 5 is returned
+    assert((try set.insert(5)).? == 5);
+    assert((try set.insert(7)) == null);
+
+    // To lookup a value from a set, use `get` function.
+    // `null` is returned if it is not exists in the set.
+    assert(set.get(&@as(u32, 5)).?.* == 5);
+    assert(set.get(&@as(u32, 10)) == null);
+
+    // To delete a value, use `delete` function.
+    // The deleted value is returned from the function.
+    assert(set.delete(&@as(u32, 5)).? == 5);
+    // '3' have been deleted already
+    assert(set.delete(&@as(u32, 5)) == null);
+
+    _ = try set.insert(5);
+    _ = try set.insert(9);
+    // iterators enumerate values in ascending order
+    var items = set.iter();
+    assert(items.next().?.* == 5);
+    assert(items.next().?.* == 7);
+    assert(items.next().?.* == 9);
+}
+
+/// Overview of key/value Map
+fn overview_of_map_features(alloc: mem.Allocator) !void {
+    var map = rbtree.llrbmap.LLRBTreeMap(u32, []u8).new(alloc, .{});
+    defer map.destroy();
+    // For adding a key/value pair, use `insert` function.
+    // The old value would be returned from the function if exists.
+    _ = try map.insert(5, try alloc.dupe(u8, "25"));
+
+    // the old value "25" is returned
+    var old = (try map.insert(5, try alloc.dupe(u8, "20"))).?;
+    defer alloc.free(old);
+    assert(mem.eql(u8, old, "25"));
+    assert((try map.insert(7, try alloc.dupe(u8, "28"))) == null);
+
+    // To lookup a value associated with a key from a map, use `get` function.
+    // `null` is returned if there is no value is associated with the key.
+    assert(mem.eql(u8, map.get(&@as(u32, 5)).?.*, "20"));
+    assert(map.get(&@as(u32, 10)) == null);
+
+    // To delete an entry, use `delete` function.
+    // The value associated with the key is returned from the function.
+    var deleted = map.delete(&@as(u32, 5)).?;
+    defer alloc.free(deleted);
+    assert(mem.eql(u8, deleted, "20"));
+    // a value associated with '5' have been deleted already
+    assert(map.delete(&@as(u32, 5)) == null);
+
+    _ = try map.insert(5, try alloc.dupe(u8, "20"));
+    _ = try map.insert(9, try alloc.dupe(u8, "36"));
+    // iterators enumerate values in ascending order
+    var kvs = map.iter();
+    var k0 = kvs.next().?;
+    assert(k0.key().* == 5 and mem.eql(u8, k0.value().*, "20"));
+    var k1 = kvs.next().?;
+    assert(k1.key().* == 7 and mem.eql(u8, k1.value().*, "28"));
+    var k2 = kvs.next().?;
+    assert(k2.key().* == 9 and mem.eql(u8, k2.value().*, "36"));
+}
+
+pub fn main() anyerror!void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer testing.expect(!gpa.deinit()) catch @panic("leak");
+
+    print("overview_of_set_features\n", .{});
+    try overview_of_set_features(gpa.allocator());
+    print("overview_of_map_features\n", .{});
+    try overview_of_map_features(gpa.allocator());
+}
 
 test {
-    const std = @import("std");
-    std.testing.refAllDecls(@This());
+    try overview_of_set_features(testing.allocator);
+    try overview_of_map_features(testing.allocator);
 }
