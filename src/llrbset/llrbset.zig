@@ -28,13 +28,13 @@ const Color = color.Color;
 /// # Arguments
 /// - `T`: type of values, and a total ordering releation must be defined.
 /// - `A`: allocator allocates memory for inner nodes of data structures.
-pub fn LLRBTreeSet(comptime T: type, comptime A: Allocator) type {
+pub fn LLRBTreeSet(comptime T: type) type {
     return struct {
         /// The type `LLRBTreeSet` itself
         pub const Self: type = @This();
         pub const Item: type = T;
         /// Type of allocator to allocate memory for internal Nodes.
-        pub const Alloc: Allocator = A;
+        pub const Alloc: Allocator = std.testing.allocator;
 
         /// Type of configuration parameters
         pub const Config: type = config.Config(Alloc);
@@ -42,19 +42,20 @@ pub fn LLRBTreeSet(comptime T: type, comptime A: Allocator) type {
         // tree implementation
         const Node = node.Node(Item, Alloc);
 
+        alloc: Allocator,
         root: ?*Node,
         cmp: fn (*const T, *const T) Order,
         cfg: Config,
 
         /// Build a Set by passing an allocator that allocates memory for internal nodes.
-        pub fn new(cfg: Config) Self {
-            return .{ .root = null, .cmp = Con.Ord.on(*const T), .cfg = cfg };
+        pub fn new(alloc: Allocator, cfg: Config) Self {
+            return .{ .alloc = alloc, .root = null, .cmp = Con.Ord.on(*const T), .cfg = cfg };
         }
 
         /// Build a Set of T like `new`, but takes an order function explicitly.
         /// The function must be a total order.
-        pub fn with_cmp(cfg: Config, cmp: fn (*const T, *const T) Order) Self {
-            return .{ .root = null, .cmp = cmp, .cfg = cfg };
+        pub fn with_cmp(alloc: Allocator, cfg: Config, cmp: fn (*const T, *const T) Order) Self {
+            return .{ .alloc = alloc, .root = null, .cmp = cmp, .cfg = cfg };
         }
 
         /// Destroy the Set
@@ -66,7 +67,7 @@ pub fn LLRBTreeSet(comptime T: type, comptime A: Allocator) type {
             Node.check_inv(self.root);
             if (self.root) |root| {
                 root.destroy(Config, &self.cfg);
-                Alloc.destroy(root);
+                self.alloc.destroy(root);
                 self.root = null;
             }
         }
@@ -157,11 +158,11 @@ pub fn LLRBTreeSet(comptime T: type, comptime A: Allocator) type {
 
 test "simple insert" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Tree = LLRBTreeSet(u32, allocator);
+    const Tree = LLRBTreeSet(u32);
 
-    var tree = Tree.new(.{});
+    var tree = Tree.new(alloc, .{});
     defer tree.destroy();
 
     var values = [_]u32{ 0, 1, 2, 3, 4 };
@@ -173,14 +174,14 @@ test "simple insert" {
 test "insert" {
     const testing = std.testing;
     const rand = std.rand;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Tree = LLRBTreeSet(u32, allocator);
+    const Tree = LLRBTreeSet(u32);
     var rng = rand.DefaultPrng.init(0);
     const random = rng.random();
     const num: usize = 20;
 
-    var tree = Tree.new(.{});
+    var tree = Tree.new(alloc, .{});
     defer tree.destroy();
 
     var i: usize = 0;
@@ -198,23 +199,23 @@ test "insert (set of string)" {
     const fmt = std.fmt;
     const testing = std.testing;
     const rand = std.rand;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Set = LLRBTreeSet([]const u8, allocator);
+    const Set = LLRBTreeSet([]const u8);
     var rng = rand.DefaultPrng.init(0);
     const random = rng.random();
     const num: usize = 20;
-    var set = Set.with_cmp(.{}, string_cmp.order);
+    var set = Set.with_cmp(alloc, .{}, string_cmp.order);
     defer set.destroy();
 
     var i: usize = 0;
     while (i < num) : (i += 1) {
-        const v = try fmt.allocPrint(allocator, "value{}", .{random.int(u4)});
+        const v = try fmt.allocPrint(alloc, "value{}", .{random.int(u4)});
         // std.debug.print("v: {}th... \"{s}\"\n", .{ i, v });
         if (try set.insert(v)) |x| {
             // std.debug.print("already exist: \"{s}\"\n", .{x});
             try testing.expectEqualStrings(v, x);
-            Con.Destroy.destroy(x, allocator);
+            Con.Destroy.destroy(x, alloc);
         }
     }
 }
@@ -222,20 +223,20 @@ test "insert (set of string)" {
 test "insert (set of not owned string)" {
     const fmt = std.fmt;
     const testing = std.testing;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Set = LLRBTreeSet([]const u8, allocator);
+    const Set = LLRBTreeSet([]const u8);
     const num: usize = 20;
-    var set = Set.with_cmp(.{ .item_is_owned = false }, string_cmp.order);
+    var set = Set.with_cmp(alloc, .{ .item_is_owned = false }, string_cmp.order);
     defer set.destroy();
 
     var keys: [num][]const u8 = undefined;
     var i: usize = 0;
     while (i < num) : (i += 1) {
-        keys[i] = try fmt.allocPrint(allocator, "value{}", .{i});
+        keys[i] = try fmt.allocPrint(alloc, "value{}", .{i});
         // std.debug.print("v: {}th... \"{s}\"\n", .{ i, v });
     }
-    defer for (keys) |key| allocator.free(key);
+    defer for (keys) |key| alloc.free(key);
 
     for (keys) |key|
         try testing.expectEqual(@as(?Set.Item, null), try set.insert(key));
@@ -244,19 +245,19 @@ test "insert (set of not owned string)" {
 test "contains" {
     const testing = std.testing;
     const rand = std.rand;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
     const Array = std.ArrayList;
-    const Tree = LLRBTreeSet(u32, allocator);
+    const Tree = LLRBTreeSet(u32);
 
     var rng = rand.DefaultPrng.init(0);
     const random = rng.random();
     const num: usize = 2000;
 
-    var tree = Tree.new(.{});
+    var tree = Tree.new(alloc, .{});
     defer tree.destroy();
 
-    var values = Array(u32).init(allocator);
+    var values = Array(u32).init(alloc);
     defer values.deinit();
 
     var i: usize = 0;
@@ -275,19 +276,19 @@ test "contains" {
 test "get" {
     const testing = std.testing;
     const rand = std.rand;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
     const Array = std.ArrayList;
-    const Tree = LLRBTreeSet(u32, allocator);
+    const Tree = LLRBTreeSet(u32);
 
     var rng = rand.DefaultPrng.init(0);
     const random = rng.random();
     const num: usize = 2000;
 
-    var tree = Tree.new(.{});
+    var tree = Tree.new(alloc, .{});
     defer tree.destroy();
 
-    var values = Array(u32).init(allocator);
+    var values = Array(u32).init(alloc);
     defer values.deinit();
 
     var i: usize = 0;
@@ -309,18 +310,18 @@ test "delete_min" {
     const testing = std.testing;
     const rand = std.rand;
     const Array = std.ArrayList;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
     {
-        const Tree = LLRBTreeSet(u32, allocator);
+        const Tree = LLRBTreeSet(u32);
         var rng = rand.DefaultPrng.init(0);
         const random = rng.random();
         const num: usize = 4096;
 
-        var tree = Tree.new(.{});
+        var tree = Tree.new(alloc, .{});
         defer tree.destroy();
 
-        var values = Array(u32).init(allocator);
+        var values = Array(u32).init(alloc);
         defer values.deinit();
 
         var i: usize = 0;
@@ -349,26 +350,26 @@ test "delete_min" {
         }
     }
     {
-        const Tree = LLRBTreeSet([]const u8, allocator);
+        const Tree = LLRBTreeSet([]const u8);
         var rng = rand.DefaultPrng.init(0);
         const random = rng.random();
         const num: usize = 4096;
 
-        var tree = Tree.with_cmp(.{}, string_cmp.order);
+        var tree = Tree.with_cmp(alloc, .{}, string_cmp.order);
         defer tree.destroy();
 
-        var values = Array([]const u8).init(allocator);
+        var values = Array([]const u8).init(alloc);
         defer values.deinit();
-        defer while (values.popOrNull()) |m| allocator.free(m);
+        defer while (values.popOrNull()) |m| alloc.free(m);
 
         var i: usize = 0;
         while (i < num) : (i += 1) {
-            const v = try fmt.allocPrint(allocator, "value{}", .{random.int(u32)});
+            const v = try fmt.allocPrint(alloc, "value{}", .{random.int(u32)});
             // if (@mod(i, num / 10) == 0)
             //     std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
             if (try tree.insert(v)) |old|
-                allocator.free(old);
+                alloc.free(old);
         }
 
         assert(tree.root != null);
@@ -392,18 +393,18 @@ test "delete_max" {
     const testing = std.testing;
     const rand = std.rand;
     const Array = std.ArrayList;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
-    const Tree = LLRBTreeSet(u32, allocator);
+    const Tree = LLRBTreeSet(u32);
     {
         var rng = rand.DefaultPrng.init(0);
         const random = rng.random();
         const num: usize = 4096;
 
-        var tree = Tree.new(.{});
+        var tree = Tree.new(alloc, .{});
         defer tree.destroy();
 
-        var values = Array(u32).init(allocator);
+        var values = Array(u32).init(alloc);
         defer values.deinit();
 
         var i: usize = 0;
@@ -436,10 +437,10 @@ test "insert / delete" {
     const testing = std.testing;
     const rand = std.rand;
     const Array = std.ArrayList;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
 
     {
-        var tree = LLRBTreeSet(i32, allocator).new(.{});
+        var tree = LLRBTreeSet(i32).new(alloc, .{});
         // all nodes would be destroyed
         // defer tree.destroy();
         var i: i32 = 0;
@@ -460,11 +461,11 @@ test "insert / delete" {
         const random = rng.random();
         const num: usize = 4096;
 
-        var tree = LLRBTreeSet(u32, allocator).new(.{});
+        var tree = LLRBTreeSet(u32).new(alloc, .{});
         // all nodes would be destroyed
         // defer tree.destroy();
 
-        var values = Array(u32).init(allocator);
+        var values = Array(u32).init(alloc);
         defer values.deinit();
 
         var i: usize = 0;
@@ -486,9 +487,9 @@ test "insert / delete" {
 
 test "values" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    const alloc = testing.allocator;
     {
-        var tree = LLRBTreeSet(i32, allocator).new(.{});
+        var tree = LLRBTreeSet(i32).new(alloc, .{});
         defer tree.destroy();
 
         var i: i32 = 5;
@@ -508,7 +509,7 @@ test "values" {
         try testing.expectEqual(iter.next(), null);
     }
     {
-        var tree = LLRBTreeSet(i32, allocator).new(.{});
+        var tree = LLRBTreeSet(i32).new(alloc, .{});
         defer tree.destroy();
 
         var i: i32 = 0;
@@ -520,7 +521,7 @@ test "values" {
 
         var iter = tree.iter();
         defer iter.destroy();
-        var old: LLRBTreeSet(i32, allocator).Item = -1;
+        var old: LLRBTreeSet(i32).Item = -1;
         while (iter.next()) |item| {
             // std.debug.print("item: {}\n", .{item.*});
             assert(old < item.*);
