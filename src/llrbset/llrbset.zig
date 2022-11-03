@@ -13,8 +13,6 @@ const Order = std.math.Order;
 
 const assert = std.debug.assert;
 
-const Color = color.Color;
-
 /// A value set container.
 ///
 /// # Details
@@ -27,20 +25,17 @@ const Color = color.Color;
 ///
 /// # Arguments
 /// - `T`: type of values, and a total ordering releation must be defined.
-/// - `A`: allocator allocates memory for inner nodes of data structures.
 pub fn LLRBTreeSet(comptime T: type) type {
     return struct {
         /// The type `LLRBTreeSet` itself
         pub const Self: type = @This();
         pub const Item: type = T;
-        /// Type of allocator to allocate memory for internal Nodes.
-        pub const Alloc: Allocator = std.testing.allocator;
 
-        /// Type of configuration parameters
-        pub const Config: type = config.Config(Alloc);
-
-        // tree implementation
+        // type of node of tree structure
         const Node = node.Node(Item);
+
+        /// Type of ownership configuration parameters
+        pub const Config: type = Node.Config;
 
         alloc: Allocator,
         root: ?*Node,
@@ -227,7 +222,7 @@ test "insert (set of not owned string)" {
 
     const Set = LLRBTreeSet([]const u8);
     const num: usize = 20;
-    var set = Set.with_cmp(alloc, .{ .item_is_owned = false }, string_cmp.order);
+    var set = Set.with_cmp(alloc, .{ .item = .NotOwned }, string_cmp.order);
     defer set.destroy();
 
     var keys: [num][]const u8 = undefined;

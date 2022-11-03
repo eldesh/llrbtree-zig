@@ -39,17 +39,14 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         pub const Key: type = K;
         /// Type of values to be stored in the container.
         pub const Value: type = V;
-        /// The allocator to allocate memory for internal Nodes.
-        pub const Alloc: Allocator = std.testing.allocator;
-
-        /// Type of configuration parameters
-        pub const Config: type = config.Config(Alloc);
 
         // tree implementation
         const Node = node.Node(Key, Value);
 
-        pub const NotOwned: Config = Config{ .key_is_owned = false, .value_is_owned = false };
+        /// Type of configuration parameters
+        pub const Config: type = Node.Config;
 
+        /// The allocator to allocate memory for internal Nodes.
         alloc: Allocator,
         root: ?*Node,
         cmp: fn (*const K, *const K) Order,
@@ -142,8 +139,11 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
             Node.check_inv(self.root);
             if (oldopt) |old| {
                 const tup = old.toTuple();
-                if (self.cfg.key_is_owned)
-                    Con.Destroy.destroy(tup[0], self.cfg.key_alloc);
+                switch (self.cfg.key) {
+                    .OwnedAlloc => |key_alloc| Con.Destroy.destroy(tup[0], key_alloc),
+                    .Owned => Con.Destroy.destroy(tup[0], self.alloc),
+                    .NotOwned => {},
+                }
                 return tup[1];
             } else return null;
         }
@@ -283,7 +283,7 @@ test "insert (not owned string key)" {
     defer for (keys) |key| Con.Destroy.destroy(key, alloc);
 
     // the Map not owned keys
-    var map = Map.with_cmp(alloc, .{ .key_is_owned = false }, string_cmp.order);
+    var map = Map.with_cmp(alloc, .{ .key = .NotOwned }, string_cmp.order);
     defer map.destroy();
 
     for (keys) |key, i|
@@ -332,7 +332,7 @@ test "insert (not owned value)" {
     defer for (values) |value| Con.Destroy.destroy(value, alloc);
 
     // the Map not owned keys
-    var map = Map.new(alloc, .{ .value_is_owned = false });
+    var map = Map.new(alloc, .{ .value = .NotOwned });
     defer map.destroy();
 
     for (values) |value, i|
@@ -611,7 +611,7 @@ test "entry" {
         }
     }
     {
-        var map = LLRBTreeMap(u32, []const u8).new(alloc, .{ .value_is_owned = false });
+        var map = LLRBTreeMap(u32, []const u8).new(alloc, .{ .value = .NotOwned });
         defer map.destroy();
         _ = try map.insert(42, "foo");
         var entry_ = map.entry(42);

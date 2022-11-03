@@ -46,6 +46,13 @@ pub const llrbset = @import("./llrbset/llrbset.zig");
 /// Then, almost all operations are performed using a key given as a function argument.
 pub const llrbmap = @import("./llrbmap/llrbmap.zig");
 
+/// State of ownership
+///
+/// # Details
+/// For constructing a value of `LLRBTreeSet` or `LLRBTreeMap`, specify kind of ownership of items held in the container.
+/// When values are owned in the container (i.e. the values should be destoyed with an allocator in the container), `Owned` or `OwnedAlloc` should be used.
+pub const ownership = @import("./ownership.zig");
+
 test {
     const std = @import("std");
     std.testing.refAllDecls(@This());

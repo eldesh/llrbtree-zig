@@ -35,13 +35,19 @@ fn NodeKeyValue(comptime Self: type) type {
             return item.value();
         }
 
-        pub fn destroy_item(self: *Self, cfg: *const Config) void {
+        pub fn destroy_item(self: *Self, alloc: Allocator, cfg: *const Config) void {
             var tup = self.item.toTuple();
-            if (cfg.key_is_owned)
-                Con.Destroy.destroy(tup[0], cfg.key_alloc);
+            switch (cfg.key) {
+                .OwnedAlloc => |key_alloc| Con.Destroy.destroy(tup[0], key_alloc),
+                .Owned => Con.Destroy.destroy(tup[0], alloc),
+                .NotOwned => {},
+            }
 
-            if (cfg.value_is_owned)
-                Con.Destroy.destroy(tup[1], cfg.value_alloc);
+            switch (cfg.value) {
+                .OwnedAlloc => |value_alloc| Con.Destroy.destroy(tup[1], value_alloc),
+                .Owned => Con.Destroy.destroy(tup[1], alloc),
+                .NotOwned => {},
+            }
         }
 
         pub fn entry(self: *?*Self, alloc: Allocator, key: Key, cmp: fn (*const Key, *const Key) Order) Entry(Key, Value) {
@@ -71,5 +77,5 @@ fn NodeKeyValue(comptime Self: type) type {
 }
 
 pub fn Node(comptime Key: type, comptime Value: type) type {
-    return node.Node(NodeKeyValue, key_value.KeyValue(Key, Value), Key, config.Config(std.testing.allocator));
+    return node.Node(NodeKeyValue, key_value.KeyValue(Key, Value), Key, config.Config);
 }

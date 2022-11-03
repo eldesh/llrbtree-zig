@@ -145,7 +145,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 alloc.destroy(lnode);
                 self.lnode = null;
             }
-            self.destroy_item(config);
+            self.destroy_item(alloc, config);
             if (self.rnode) |rnode| {
                 rnode.destroy(alloc, C, config);
                 alloc.destroy(rnode);
