@@ -218,25 +218,29 @@ test "insert (set of string)" {
 }
 
 test "insert (set of not owned string)" {
-    const fmt = std.fmt;
     const testing = std.testing;
     const alloc = testing.allocator;
 
     const Set = LLRBTreeSet([]const u8);
-    const num: usize = 20;
     var set = Set.with_cmp(alloc, Set.NotOwned, string_cmp.order);
+    // Items in the set are `NotOwned` and are not destroyed.
     defer set.destroy();
 
-    var keys: [num][]const u8 = undefined;
-    var i: usize = 0;
-    while (i < num) : (i += 1) {
-        keys[i] = try fmt.allocPrint(alloc, "value{}", .{i});
-        // std.debug.print("v: {}th... \"{s}\"\n", .{ i, v });
-    }
-    defer for (keys) |key| alloc.free(key);
+    const num: usize = 20;
+    var items: [num][]const u8 = init: {
+        var items: [num][]const u8 = undefined;
+        var i: usize = 0;
+        while (i < num) : (i += 1) {
+            items[i] = try std.fmt.allocPrint(alloc, "value{}", .{i});
+            // std.debug.print("v: {}th... \"{s}\"\n", .{ i, v });
+        }
+        break :init items;
+    };
+    // Items are owned by variable `keys`.
+    defer for (items) |item| alloc.free(item);
 
-    for (keys) |key|
-        try testing.expectEqual(@as(?Set.Item, null), try set.insert(key));
+    for (items) |item|
+        try testing.expectEqual(@as(?Set.Item, null), try set.insert(item));
 }
 
 test "contains" {
