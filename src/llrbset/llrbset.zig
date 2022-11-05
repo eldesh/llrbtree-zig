@@ -399,7 +399,6 @@ test "delete_min" {
 
         var values = Array([]const u8).init(alloc);
         defer values.deinit();
-        defer while (values.popOrNull()) |m| alloc.free(m);
 
         var i: usize = 0;
         while (i < num) : (i += 1) {
@@ -413,13 +412,15 @@ test "delete_min" {
 
         assert(tree.root != null);
 
-        var min: []const u8 = ("".*)[0..];
+        var min: []const u8 = try fmt.allocPrint(alloc, "", .{});
+        defer alloc.free(min);
         for (values.items) |_, j| {
             _ = j;
             // const p = @mod(j, num / 10) == 0;
             if (tree.delete_min()) |rm| {
                 // if (p) std.debug.print("v: {}th... {s}\n", .{ j, rm });
                 try testing.expectEqual(Order.lt, string_cmp.order(&min, &rm));
+                alloc.free(min);
                 min = rm;
             } else {
                 // if (p) std.debug.print("v: {}th... none\n", .{j});
@@ -501,8 +502,7 @@ test "insert / delete" {
         const num: usize = 4096;
 
         var tree = LLRBTreeSet(u32).new(alloc, .{});
-        // all nodes would be destroyed
-        // defer tree.destroy();
+        defer tree.destroy();
 
         var values = Array(u32).init(alloc);
         defer values.deinit();
@@ -517,6 +517,7 @@ test "insert / delete" {
                 assert(v == in);
         }
 
+        // all nodes would be destroyed
         while (values.popOrNull()) |v| {
             if (tree.delete(&v)) |rm|
                 assert(v == rm);
