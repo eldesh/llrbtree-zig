@@ -86,13 +86,15 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
         }
 
         fn check_disallowed_2reds(self: *const Self) InvariantError!void {
-            if (isRed(self)) {
-                if (isRed(self.lnode) or isRed(self.rnode))
-                    return InvariantError.TwoRedsInARow;
-            }
+            if (isRed(self) and isRed(self.rnode))
+                return InvariantError.TwoRedsInARow;
+
+            if (isRed(self) and isRed(self.lnode))
+                return InvariantError.TwoRedsInARow;
 
             if (self.rnode) |rnode|
                 try rnode.check_disallowed_2reds();
+
             if (self.lnode) |lnode|
                 try lnode.check_disallowed_2reds();
         }
@@ -109,29 +111,26 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             }
         }
 
-        fn check_perfect_black_balance(self: Self) InvariantError!void {
-            var self_ = self;
-            var rblack: u32 = 0;
-            var lblack: u32 = 0;
+        fn count_black_node(self: *const Self) InvariantError!u32 {
+            const rblack: u32 = if (self.rnode) |rnode|
+                try rnode.count_black_node()
+            else
+                1;
 
-            var node: ?*Self = &self_;
-            while (node) |n| : (node = n.rnode) {
-                if (!isRed(n.rnode))
-                    rblack += 1;
-            }
-            node = &self_;
-            while (node) |n| : (node = n.lnode) {
-                if (!isRed(n.lnode))
-                    lblack += 1;
-            }
-            if (rblack != lblack) {
-                std.debug.print("balance: {} vs {}\n", .{ lblack, rblack });
+            const lblack: u32 = if (self.lnode) |lnode|
+                try lnode.count_black_node()
+            else
+                1;
+
+            if (lblack != rblack) {
+                // std.debug.print("lblack != rblack: {} != {}\n", .{ lblack, rblack });
                 return InvariantError.PerfectBlackBalance;
             }
-            if (self.rnode) |rnode|
-                try rnode.check_perfect_black_balance();
-            if (self.lnode) |lnode|
-                try lnode.check_perfect_black_balance();
+            return lblack + if (isRed(self)) @as(u32, 0) else @as(u32, 1);
+        }
+
+        fn check_perfect_black_balance(self: *const Self) InvariantError!void {
+            _ = try self.count_black_node();
         }
 
         pub fn new(alloc: Allocator, item: T, lnode: ?*Self, rnode: ?*Self) Allocator.Error!*Self {
