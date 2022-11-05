@@ -27,18 +27,21 @@ pub const InvariantError = error{
 /// 
 /// - `Derive`
 ///   Derive struct that implements `get_key` which project reference to value for comparing.
-///   The projected function should have the type `fn (*const T) *const Key`.
+///   The derived function should have the type `fn (*const T) *const Key`.
 /// - `T`
 ///   Type of value held on Node.
 /// - `Key`
 ///   Type of value projected for ordering from `T`.
-pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: type, comptime Config: type) type {
+/// - `Cfg`
+///   Type of ownership configuration of values.
+///   It should be either `llrbset.config.Config` or `llrbmap.config.Config`.
+pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: type, comptime Cfg: type) type {
     return struct {
         pub const Self: type = @This();
         pub const Item: type = T;
-        pub const Config: type = Config;
+        pub const Config: type = Cfg;
 
-        /// The depth of stack for iterating trees
+        /// The upper bound of the depth of stack for iterating trees
         ///
         /// # Details
         /// This should be greater than or equals to the maximum length of the path from the root.

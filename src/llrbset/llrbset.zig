@@ -34,9 +34,10 @@ pub fn LLRBTreeSet(comptime T: type) type {
         // type of node of tree structure
         const Node = node.Node(Item);
 
-        /// Type of ownership configuration parameters
+        /// Type of ownership configuration parameters.
+        /// By default, it represents that items are owned by the set.
         pub const Config: type = Node.Config;
-        /// Shorthand for representing that the items in this set are not owned.
+        /// Shorthand for representing that items in the set are not owned.
         pub const NotOwned: Config = Config{ .item = .NotOwned };
 
         alloc: Allocator,
@@ -44,22 +45,59 @@ pub fn LLRBTreeSet(comptime T: type) type {
         cmp: fn (*const T, *const T) Order,
         cfg: Config,
 
-        /// Build a Set by passing an allocator that allocates memory for internal nodes.
-        pub fn new(alloc: Allocator, cfg: Config) Self {
-            return .{ .alloc = alloc, .root = null, .cmp = Con.Ord.on(*const T), .cfg = cfg };
-        }
-
-        /// Build a Set of T like `new`, but takes an order function explicitly.
-        /// The function must be a total order.
-        pub fn with_cmp(alloc: Allocator, cfg: Config, cmp: fn (*const T, *const T) Order) Self {
-            return .{ .alloc = alloc, .root = null, .cmp = cmp, .cfg = cfg };
-        }
-
-        /// Destroy the Set
+        /// Build a Set with an allocator and ownership config of items.
         ///
         /// # Details
-        /// Deallocates memory of all remaining nodes in the Set.
-        /// Memory owned by values are not released.
+        /// Build a Set with an allocator and ownership config of items.
+        /// The allocator that allocates memory for internal nodes.
+        ///
+        /// # Requires
+        /// The type `T` must satisfy the predicate `Con.isOrd`.
+        ///
+        /// # Examples
+        ///
+        /// Construct a set that owns items typed `T`.
+        ///
+        /// ```
+        /// var set = Set(T).new(alloc, .{});
+        /// ```
+        ///
+        /// Construct a set that not owns items typed `T`.
+        ///
+        /// ```
+        /// var set = Set(T).new(alloc, Set(T).NotOwned);
+        /// ```
+        pub fn new(alloc: Allocator, cfg: Config) Self {
+            comptime assert(Con.isOrd(T));
+            return .{
+                .alloc = alloc,
+                .root = null,
+                .cmp = Con.Ord.on(*const T),
+                .cfg = cfg,
+            };
+        }
+
+        /// Build a Set with an allocator, an ownership config of items and a comparator.
+        ///
+        /// # Details
+        /// Build a Set of values are typed `T` like `new`, but takes an order function explicitly.
+        ///
+        /// # Requires
+        /// The comparator `cmp` must be a total order function for type `T`.
+        pub fn with_cmp(alloc: Allocator, cfg: Config, cmp: fn (*const T, *const T) Order) Self {
+            return .{
+                .alloc = alloc,
+                .root = null,
+                .cmp = cmp,
+                .cfg = cfg,
+            };
+        }
+
+        /// Destroy the set
+        ///
+        /// # Details
+        /// Deallocates memory of all remaining nodes in the set.
+        /// Items held in the set are destroyed if it is owned by the set.
         pub fn destroy(self: *Self) void {
             Node.check_inv(self.root);
             if (self.root) |root| {
@@ -74,7 +112,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// # Details
         /// Returns an iterator which enumerates all values of the tree.
         /// The values are enumerated by asceding order.
-        /// Also, the tree must no be modified while the iterator is alive.
+        /// Also, the tree must not be modified while the iterator is alive.
         pub fn iter(self: *const Self) iters.Iter(Item) {
             Node.check_inv(self.root);
             return iters.Iter(Item).new(self.root, Node.get_item);
