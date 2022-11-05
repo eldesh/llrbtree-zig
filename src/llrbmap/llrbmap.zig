@@ -552,7 +552,7 @@ test "entry" {
     {
         var tree = LLRBTreeMap(i32, i32).new(alloc, .{});
         // all nodes would be destroyed
-        // defer tree.destroy();
+        defer tree.destroy();
         var i: i32 = 0;
         while (i <= 5) : (i += 1) {
             var entry_ = tree.entry(i);

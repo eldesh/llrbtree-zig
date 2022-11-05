@@ -70,11 +70,11 @@ pub fn Entry(comptime K: type, comptime V: type) type {
         /// Update a value with function `f` if the entry is occupied.
         ///
         /// ```zig
-        /// var map = LLRBTreeMap(u32, []const u8, allocator).new();
+        /// var map = LLRBTreeMap(u32, []const u8).new(.{ .value = .NotOwned });
         /// defer map.destroy();
         /// _ = try map.insert(42, "foo");
-        /// var entry_ = map.entry(42);
-        /// _ = entry_.modify(struct {
+        /// var entry = map.entry(42);
+        /// _ = entry.modify(struct {
         ///     fn bar(s: *[]const u8) void { s.* = "bar"; }
         /// }.bar);
         /// try testing.expectEqualStrings("bar", map.get(&@as(u32, 42)).?.*);
