@@ -26,17 +26,20 @@ pub fn Entry(comptime K: type, comptime V: type) type {
 
         const Stack = StaticStack(*?*Node(Key, Value), Node(Key, Value).MaxPathLength);
 
-        Vacant: VacantEntry(K, V),
-        Occupied: OccupiedEntry(K, V),
+        const Vacant = VacantEntry(K, V);
+        const Occupied = OccupiedEntry(K, V);
+
+        Vacant: Vacant,
+        Occupied: Occupied,
 
         /// Construct a `Entry.Vacant`.
         pub fn new_vacant(stack: Stack, key: Key, alloc: Allocator) Self {
-            return .{ .Vacant = VacantEntry(Key, Value).new(stack, key, alloc) };
+            return .{ .Vacant = Vacant.new(stack, key, alloc) };
         }
 
         /// Construct a `Entry.Occupied`.
         pub fn new_occupied(key: *const Key, value: *Value) Self {
-            return .{ .Occupied = OccupiedEntry(Key, Value).new(key, value) };
+            return .{ .Occupied = Occupied.new(key, value) };
         }
 
         /// Get pointer to key
@@ -54,7 +57,7 @@ pub fn Entry(comptime K: type, comptime V: type) type {
             switch (self.*) {
                 .Vacant => |*vacant| {
                     var old = try vacant.insert_entry(value) catch |err| switch (err) {
-                        VacantEntry(K, V).Error.AlreadyInserted => unreachable,
+                        Vacant.Error.AlreadyInserted => unreachable,
                         else => |aerr| aerr,
                     };
                     self.* = Self.new_occupied(old.key(), old.value_mut());
