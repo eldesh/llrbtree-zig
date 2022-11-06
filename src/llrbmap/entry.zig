@@ -50,13 +50,15 @@ pub fn Entry(comptime K: type, comptime V: type) type {
             };
         }
 
-        /// Inserts a new value and returns a pointer to the value held by the Node.
-        /// If the node is a vacant entry, `value` is inserted and a pointer to the value is returned.
-        /// If it is an occupied entry, `value` is inserted and and the old value held by the entry is returned.
-        pub fn insert(self: *Self, value: Value) Allocator.Error!*Value {
+        /// Ensures that a value in the entry.
+        ///
+        /// # Details
+        /// Inserts a new value `default` and returns a pointer points to the old value if the entry is `Entry.Vacant`.
+        /// For `Entry.Occupied`, returns a pointer points to the value in the entry.
+        pub fn or_insert(self: *Self, default: Value) Allocator.Error!*Value {
             switch (self.*) {
                 .Vacant => |*vacant| {
-                    var old = try vacant.insert_entry(value) catch |err| switch (err) {
+                    var old = try vacant.insert_entry(default) catch |err| switch (err) {
                         Vacant.Error.AlreadyInserted => unreachable,
                         else => |aerr| aerr,
                     };
@@ -184,7 +186,7 @@ pub fn OccupiedEntry(comptime K: type, comptime V: type) type {
             return self.value;
         }
 
-        /// Inserts a new value for the key.
+        /// Inserts a new value for the key and returns the old value.
         pub fn insert(self: *Self, value: Value) Value {
             const old = self.value.*;
             self.value.* = value;
