@@ -1,5 +1,3 @@
-const std = @import("std");
-
 /// Fixed size stack
 ///
 /// # Argument

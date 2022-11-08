@@ -1,10 +1,28 @@
 const std = @import("std");
 const Con = @import("basis_concept");
+const iter = @import("iter-zig");
 const static_stack = @import("./static_stack.zig");
 
 const Allocator = std.mem.Allocator;
 const Tuple = std.meta.Tuple;
 const StaticStack = static_stack.StaticStack;
+
+// Inner states of Iter of LLRBTree for depth first iteration
+const State = enum(u8) {
+    Left = 0,
+    Value = 1,
+    Right = 2,
+    Pop = 3,
+    // Updates the current state to the next and returns old state.
+    //
+    // Updates are cycled in order:
+    // Left -> Value -> Right -> Pop -> Left ...
+    fn next(self: *@This()) @This() {
+        const old = self.*;
+        self.* = @intToEnum(@This(), (@enumToInt(self.*) + 1) % 4);
+        return old;
+    }
+};
 
 /// An iterator enumerates all values of a `LLRBTreeSet` by asceding order.
 ///
@@ -24,30 +42,22 @@ const StaticStack = static_stack.StaticStack;
 ///   _ = item;
 /// }
 /// ```
-pub fn Iter(comptime Node: type, comptime V: type) type {
+pub fn MakeIter(comptime Derive: fn (type) type, comptime Node: type, comptime V: type) type {
+    // Avoid compilation error:
+    // ```
+    // ./src/iter.zig:29:12: error: struct
+    //   '.rbtree-zig.iter.MakeIter(DeriveIterator, Node...)
+    // depends on itself
+    // ```
+    const Stack: type = StaticStack(Tuple(&.{ *const Node, State }), Node.MaxPathLength);
     return struct {
         pub const Self: type = @This();
         pub const Item: type = V;
-
-        // States of depth first iteration
-        const State = enum(u8) {
-            Left = 0,
-            Value = 1,
-            Right = 2,
-            Pop = 3,
-            // Get next state and returns old state.
-            fn next(self: *@This()) @This() {
-                const old = self.*;
-                self.* = @intToEnum(@This(), (@enumToInt(self.*) + 1) % 4);
-                return old;
-            }
-        };
-
-        const Stack = StaticStack(Tuple(&.{ *const Node, State }), Node.MaxPathLength);
+        pub usingnamespace Derive(@This());
 
         root: ?*const Node,
         stack: Stack,
-        proj: fn (*const Node) Item,
+        proj: fn (*const Node) V,
 
         pub fn new(root: ?*const Node, proj: fn (*const Node) Item) Self {
             var stack = Stack.new();
@@ -89,4 +99,8 @@ pub fn Iter(comptime Node: type, comptime V: type) type {
             _ = self;
         }
     };
+}
+
+pub fn Iter(comptime Node: type, comptime V: type) type {
+    return MakeIter(iter.DeriveIterator, Node, V);
 }
