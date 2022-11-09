@@ -1,4 +1,5 @@
 const std = @import("std");
+const iter_zig = @import("iter-zig");
 const Con = @import("basis_concept");
 const color = @import("../color.zig");
 const string_cmp = @import("../string_cmp.zig");
@@ -555,18 +556,22 @@ test "entry" {
         defer tree.destroy();
         var i: i32 = 0;
         while (i <= 5) : (i += 1) {
+            try testing.expect(!tree.contains_key(&i));
             var entry_ = tree.entry(i);
             try testing.expectEqual(i, entry_.get_key().*);
-            try testing.expectEqual(i, (try entry_.insert(i)).*);
+            try testing.expectEqual(i, (try entry_.or_insert(i)).*);
+            try testing.expectEqual(i, tree.get(&i).?.*);
         }
         i -= 1;
         while (i >= 0) : (i -= 1) {
+            try testing.expectEqual(i, tree.get(&i).?.*);
             var entry_ = tree.entry(i);
             try testing.expectEqual(i, entry_.get_key().*);
-            try testing.expectEqual(i, (try entry_.insert(i)).*);
+            try testing.expectEqual(i, (try entry_.or_insert(i)).*);
         }
         i = 0;
         while (i <= 5) : (i += 1) {
+            try testing.expectEqual(i, tree.get(&i).?.*);
             var entry_ = tree.entry(i);
             try testing.expectEqual(i, entry_.get_key().*);
             _ = entry_.modify(struct {
@@ -602,7 +607,7 @@ test "entry" {
             //     std.debug.print("v: {}th... {}\n", .{ i, v });
             try values.append(v);
             var entry_ = tree.entry(v);
-            try testing.expectEqual(v, (try entry_.insert(v)).*);
+            try testing.expectEqual(v, (try entry_.or_insert(v)).*);
         }
 
         while (values.popOrNull()) |v| {
@@ -654,6 +659,27 @@ test "iter" {
         try testing.expectEqual(iter.next().?.*, kv(4, 4));
         try testing.expectEqual(iter.next().?.*, kv(5, 5));
         try testing.expectEqual(iter.next(), null);
+
+        var iter2 = tree.iter().map_while(struct {
+            fn pred(v: *const KV(Tree.Key, Tree.Value)) ?i32 {
+                const t = v.toTuple();
+                return if (t[0] * t[1] < 10) t[0] * t[1] else null;
+            }
+        }.pred).flat_map(struct {
+            fn map(v: i32) iter_zig.Range(i32) {
+                // v -> [v, v+1]
+                return iter_zig.range(v, v + 2);
+            }
+        }.map);
+        try testing.expectEqual(@as(i32, 0), iter2.next().?);
+        try testing.expectEqual(@as(i32, 1), iter2.next().?);
+        try testing.expectEqual(@as(i32, 1), iter2.next().?);
+        try testing.expectEqual(@as(i32, 2), iter2.next().?);
+        try testing.expectEqual(@as(i32, 4), iter2.next().?);
+        try testing.expectEqual(@as(i32, 5), iter2.next().?);
+        try testing.expectEqual(@as(i32, 9), iter2.next().?);
+        try testing.expectEqual(@as(i32, 10), iter2.next().?);
+        try testing.expectEqual(@as(?i32, null), iter2.next());
     }
     {
         var tree = LLRBTreeMap(i32, i32).new(testing.allocator, .{});
@@ -701,23 +727,25 @@ test "keys" {
         try testing.expectEqual(keys.next(), null);
     }
     {
-        var tree = LLRBTreeMap(i32, i32).new(testing.allocator, .{});
+        var tree = LLRBTreeMap(i32, f64).new(testing.allocator, .{});
         defer tree.destroy();
 
         var i: i32 = 0;
         while (i <= 4096) : (i += 2)
-            try testing.expectEqual(try tree.insert(i, i), null);
+            try testing.expectEqual(try tree.insert(i, @intToFloat(f64, i * 2)), null);
         i = 1;
         while (i <= 4096) : (i += 2)
-            try testing.expectEqual(try tree.insert(i, i), null);
+            try testing.expectEqual(try tree.insert(i, @intToFloat(f64, i * 2)), null);
 
+        try testing.expectEqual(@as(usize, 4097), tree.keys().count());
         var keys = tree.keys();
-        var old: LLRBTreeMap(i32, i32).Value = -1;
+        var old: LLRBTreeMap(i32, f64).Key = -1;
         while (keys.next()) |key| {
             // std.debug.print("item: {}\n", .{item.*});
             assert(old < key.*);
             old = key.*;
         }
+        try testing.expectEqual(@as(i32, 0), tree.keys().min().?.*);
     }
 }
 
@@ -756,12 +784,24 @@ test "value" {
         while (i <= 4096) : (i += 2)
             try testing.expectEqual(try tree.insert(i, i), null);
 
-        var values = tree.values();
-        var old: LLRBTreeMap(i32, i32).Value = -1;
-        while (values.next()) |val| {
-            // std.debug.print("item: {}\n", .{item.*});
-            assert(old < val.*);
-            old = val.*;
-        }
+        try testing.expectEqual(@as(usize, 4097), tree.values().count());
+        var values = tree.values().filter(struct {
+            fn pred(v: *const i32) bool {
+                // 0, 1000, 2000, 3000, 4000
+                return @mod(v.*, 1000) == 0;
+            }
+        }.pred).map(struct {
+            fn map(v: *const i32) i32 {
+                // 0, 1, 2, 3, 4
+                return @divExact(v.*, 1000);
+            }
+        }.map);
+
+        try testing.expectEqual(@as(?i32, 0), values.next());
+        try testing.expectEqual(@as(?i32, 1), values.next());
+        try testing.expectEqual(@as(?i32, 2), values.next());
+        try testing.expectEqual(@as(?i32, 3), values.next());
+        try testing.expectEqual(@as(?i32, 4), values.next());
+        try testing.expectEqual(@as(?i32, null), values.next());
     }
 }

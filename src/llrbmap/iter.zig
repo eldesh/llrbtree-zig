@@ -22,6 +22,16 @@ pub fn Iter(comptime K: type, comptime V: type) type {
     return iter.Iter(node.Node(K, V), *const node.Node(K, V).Item);
 }
 
+test "llrbmap.iter" {
+    const iter_zig = @import("iter-zig");
+    const key_value = @import("key_value.zig");
+    const assert = std.debug.assert;
+    comptime {
+        assert(iter_zig.isIterator(Iter(u32, f64)));
+        assert(Iter(u32, f64).Item == *const key_value.KeyValue(u32, f64));
+    }
+}
+
 /// Make an iterator enumerates all keys of a `LLRBTreeMap` by ascending order.
 ///
 /// # Details
@@ -39,6 +49,15 @@ pub fn Keys(comptime K: type, comptime V: type) type {
     return iter.Iter(node.Node(K, V), *const K);
 }
 
+test "llrbmap.keys" {
+    const iter_zig = @import("iter-zig");
+    const assert = std.debug.assert;
+    comptime {
+        assert(iter_zig.isIterator(Keys(u32, f64)));
+        assert(Keys(u32, f64).Item == *const u32);
+    }
+}
+
 /// Make an iterator enumerates all values of a `LLRBTreeMap` by ascending order of associated keys.
 ///
 /// # Details
@@ -54,4 +73,13 @@ pub fn Keys(comptime K: type, comptime V: type) type {
 /// ```
 pub fn Values(comptime K: type, comptime V: type) type {
     return iter.Iter(node.Node(K, V), *const V);
+}
+
+test "llrbmap.values" {
+    const iter_zig = @import("iter-zig");
+    const assert = std.debug.assert;
+    comptime {
+        assert(iter_zig.isIterator(Values(u32, f64)));
+        assert(Values(u32, f64).Item == *const f64);
+    }
 }

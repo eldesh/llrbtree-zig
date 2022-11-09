@@ -17,3 +17,13 @@ const node = @import("./node.zig");
 pub fn Iter(comptime V: type) type {
     return iter.Iter(node.Node(V), *const V);
 }
+
+test "llrbset.iter" {
+    const iter_zig = @import("iter-zig");
+    const std = @import("std");
+    const assert = std.debug.assert;
+    comptime {
+        assert(iter_zig.isIterator(Iter(u32)));
+        assert(Iter(u32).Item == *const u32);
+    }
+}
