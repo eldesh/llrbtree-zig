@@ -37,7 +37,7 @@ pub fn KeyValue(comptime K: type, comptime V: type) type {
         }
 
         pub fn fromTuple(tuple: Tuple(&[_]type{ Key, Value })) Self {
-            return Self{ .key = tuple[0], .value = tuple[1] };
+            return Self{ ._key = tuple[0], ._value = tuple[1] };
         }
 
         pub fn asTuple(self: *const Self) Tuple(&[_]type{ *const Key, *const Value }) {
