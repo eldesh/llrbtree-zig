@@ -738,8 +738,9 @@ test "keys" {
         while (i <= 4096) : (i += 2)
             try testing.expectEqual(try tree.insert(i, @intToFloat(f64, i * 2)), null);
 
-        try testing.expectEqual(@as(usize, 4097), tree.keys().count());
         var keys = tree.keys();
+        try testing.expectEqual(@as(usize, 4097), keys.count());
+        keys = tree.keys();
         var old: LLRBTreeMap(i32, f64).Key = -1;
         while (keys.next()) |key| {
             // std.debug.print("item: {}\n", .{item.*});
@@ -785,7 +786,10 @@ test "value" {
         while (i <= 4096) : (i += 2)
             try testing.expectEqual(try tree.insert(i, i), null);
 
-        try testing.expectEqual(@as(usize, 4097), tree.values().count());
+        {
+            var values = tree.values();
+            try testing.expectEqual(@as(usize, 4097), values.count());
+        }
         var values = tree.values().filter(struct {
             fn pred(v: *const i32) bool {
                 // 0, 1000, 2000, 3000, 4000
