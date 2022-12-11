@@ -9,14 +9,11 @@ const Allocator = std.mem.Allocator;
 
 pub fn NodeValue(comptime Self: type) type {
     return struct {
-        const Item = Self.Item;
-        const Config = Self.Config;
-
         pub fn get_key(item: *const Self.Item) *const Self.Item {
             return item;
         }
 
-        pub fn destroy_item(self: *Self, alloc: Allocator, cfg: *const Config) void {
+        pub fn destroy_item(self: *Self, alloc: Allocator, cfg: *const Self.Config) void {
             switch (cfg.item) {
                 .OwnedAlloc => |item_alloc| Con.Destroy.destroy(self.item, item_alloc),
                 .Owned => Con.Destroy.destroy(self.item, alloc),
