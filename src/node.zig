@@ -94,19 +94,19 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
                 return InvariantError.TwoRedsInARow;
 
             if (self.rnode) |rnode|
-                try rnode.check_disallowed_2reds();
+                try check_disallowed_2reds(rnode);
 
             if (self.lnode) |lnode|
-                try lnode.check_disallowed_2reds();
+                try check_disallowed_2reds(lnode);
         }
 
         // isRed(self.rnode) ==> isRed(self.lnode)
         fn check_left_leaning(self: *const Self) InvariantError!void {
             if (!isRed(self.rnode) or self.lnode == null or isRed(self.lnode)) {
                 if (self.rnode) |rnode|
-                    try rnode.check_left_leaning();
+                    try check_left_leaning(rnode);
                 if (self.lnode) |lnode|
-                    try lnode.check_left_leaning();
+                    try check_left_leaning(lnode);
             } else {
                 return InvariantError.NotLeftLeaning;
             }
@@ -114,12 +114,12 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
 
         fn count_black_node(self: *const Self) InvariantError!u32 {
             const rblack: u32 = if (self.rnode) |rnode|
-                try rnode.count_black_node()
+                try count_black_node(rnode)
             else
                 1;
 
             const lblack: u32 = if (self.lnode) |lnode|
-                try lnode.count_black_node()
+                try count_black_node(lnode)
             else
                 1;
 
