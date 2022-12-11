@@ -23,7 +23,7 @@ test "llrbset.iter" {
     const std = @import("std");
     const assert = std.debug.assert;
     comptime {
-        assert(iter_zig.isIterator(Iter(u32)));
+        assert(iter_zig.prelude.isIterator(Iter(u32)));
         assert(Iter(u32).Item == *const u32);
     }
 }

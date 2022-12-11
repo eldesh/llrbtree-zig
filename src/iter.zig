@@ -105,5 +105,5 @@ pub fn MakeIter(comptime Derive: fn (type) type, comptime Node: type, comptime V
 }
 
 pub fn Iter(comptime Node: type, comptime V: type) type {
-    return MakeIter(iter.DeriveIterator, Node, V);
+    comptime return MakeIter(iter.prelude.DeriveIterator, Node, V);
 }

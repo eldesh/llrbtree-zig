@@ -27,7 +27,7 @@ test "llrbmap.iter" {
     const key_value = @import("key_value.zig");
     const assert = std.debug.assert;
     comptime {
-        assert(iter_zig.isIterator(Iter(u32, f64)));
+        assert(iter_zig.prelude.isIterator(Iter(u32, f64)));
         assert(Iter(u32, f64).Item == *const key_value.KeyValue(u32, f64));
     }
 }
@@ -53,7 +53,7 @@ test "llrbmap.keys" {
     const iter_zig = @import("iter-zig");
     const assert = std.debug.assert;
     comptime {
-        assert(iter_zig.isIterator(Keys(u32, f64)));
+        assert(iter_zig.prelude.isIterator(Keys(u32, f64)));
         assert(Keys(u32, f64).Item == *const u32);
     }
 }
@@ -79,7 +79,7 @@ test "llrbmap.values" {
     const iter_zig = @import("iter-zig");
     const assert = std.debug.assert;
     comptime {
-        assert(iter_zig.isIterator(Values(u32, f64)));
+        assert(iter_zig.prelude.isIterator(Values(u32, f64)));
         assert(Values(u32, f64).Item == *const f64);
     }
 }
