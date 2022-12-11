@@ -59,10 +59,10 @@ pub fn Entry(comptime K: type, comptime V: type) type {
         pub fn or_insert(self: *Self, default: Value) Allocator.Error!*Value {
             switch (self.*) {
                 .Vacant => |*vacant| {
-                    var old = try vacant.insert_entry(default) catch |err| switch (err) {
+                    var old = try (vacant.insert_entry(default) catch |err| switch (err) {
                         Vacant.Error.AlreadyInserted => unreachable,
                         else => |aerr| aerr,
-                    };
+                    });
                     self.* = Self.new_occupied(old.key(), old.value_mut());
                     return old.value_mut();
                 },

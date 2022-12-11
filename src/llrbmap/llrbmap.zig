@@ -667,9 +667,9 @@ test "iter" {
                 return if (t[0] * t[1] < 10) t[0] * t[1] else null;
             }
         }.pred).flat_map(struct {
-            fn map(v: i32) iter_zig.Range(i32) {
+            fn map(v: i32) iter_zig.range.Range(i32) {
                 // v -> [v, v+1]
-                return iter_zig.range(v, v + 2);
+                return iter_zig.range.range(v, v + 2);
             }
         }.map);
         try testing.expectEqual(@as(i32, 0), iter2.next().?);
