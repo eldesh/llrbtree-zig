@@ -671,7 +671,12 @@ test "iter" {
                 // v -> [v, v+1]
                 return iter_zig.range.range(v, v + 2);
             }
-        }.map);
+        }.map).inspect(struct {
+            fn ins(v: *const i32) void {
+                _ = v;
+                // std.debug.print("inspect: {}\n", .{v.*});
+            }
+        }.ins);
         try testing.expectEqual(@as(i32, 0), iter2.next().?);
         try testing.expectEqual(@as(i32, 1), iter2.next().?);
         try testing.expectEqual(@as(i32, 1), iter2.next().?);
