@@ -4,6 +4,7 @@ const Con = @import("basis_concept");
 const color = @import("../color.zig");
 const string_cmp = @import("../string_cmp.zig");
 const node = @import("./node.zig");
+const compat = @import("../compat.zig");
 
 pub const config = @import("./config.zig");
 pub const key_value = @import("./key_value.zig");
@@ -50,7 +51,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// The allocator to allocate memory for internal Nodes.
         alloc: Allocator,
         root: ?*Node,
-        cmp: fn (*const K, *const K) Order,
+        cmp: compat.Func2(*const K, *const K, Order),
         cfg: Config,
 
         /// Build a Map by passing an allocator that allocates memory for internal nodes.
@@ -60,7 +61,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
 
         /// Build a Map like `new`, but takes an order function explicitly.
         /// The function must be a total order.
-        pub fn with_cmp(alloc: Allocator, cfg: Config, cmp: fn (*const K, *const K) Order) Self {
+        pub fn with_cmp(alloc: Allocator, cfg: Config, cmp: compat.Func2(*const K, *const K, Order)) Self {
             return .{ .alloc = alloc, .root = null, .cmp = cmp, .cfg = cfg };
         }
 

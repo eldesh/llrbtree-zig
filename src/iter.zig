@@ -2,8 +2,8 @@ const std = @import("std");
 const Con = @import("basis_concept");
 const iter = @import("iter-zig");
 const static_stack = @import("./static_stack.zig");
+const compat = @import("./compat.zig");
 
-const Allocator = std.mem.Allocator;
 const Tuple = std.meta.Tuple;
 const StaticStack = static_stack.StaticStack;
 
@@ -50,6 +50,9 @@ pub fn MakeIter(comptime Derive: fn (type) type, comptime Node: type, comptime V
     // depends on itself
     // ```
     const Stack: type = StaticStack(Tuple(&.{ *const Node, State }), Node.MaxPathLength);
+
+    // type of projection function value from a node
+    const Proj = compat.Func(*const Node, V);
     return struct {
         pub const Self: type = @This();
         pub const Item: type = V;
@@ -57,9 +60,9 @@ pub fn MakeIter(comptime Derive: fn (type) type, comptime Node: type, comptime V
 
         root: ?*const Node,
         stack: Stack,
-        proj: fn (*const Node) V,
+        proj: Proj,
 
-        pub fn new(root: ?*const Node, proj: fn (*const Node) Item) Self {
+        pub fn new(root: ?*const Node, proj: Proj) Self {
             var stack = Stack.new();
             if (root) |n|
                 stack.force_push(.{ n, State.Left });

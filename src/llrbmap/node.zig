@@ -1,6 +1,7 @@
 const std = @import("std");
 const Con = @import("basis_concept");
 
+const compat = @import("../compat.zig");
 const config = @import("config.zig");
 const key_value = @import("./key_value.zig");
 const node = @import("../node.zig");
@@ -50,7 +51,7 @@ fn NodeKeyValue(comptime Self: type) type {
             }
         }
 
-        pub fn entry(self: *?*Self, alloc: Allocator, key: Key, cmp: fn (*const Key, *const Key) Order) Entry(Key, Value) {
+        pub fn entry(self: *?*Self, alloc: Allocator, key: Key, cmp: compat.Func2(*const Key, *const Key, Order)) Entry(Key, Value) {
             var stack = StaticStack(*?*Self, Self.MaxPathLength).new();
             stack.force_push(self);
             while (stack.force_peek().*) |n| {

@@ -3,6 +3,7 @@ const std = @import("std");
 const node = @import("./node.zig");
 const static_stack = @import("../static_stack.zig");
 const key_value = @import("./key_value.zig");
+const compat = @import("../compat.zig");
 
 const Allocator = std.mem.Allocator;
 const StaticStack = static_stack.StaticStack;
@@ -81,7 +82,7 @@ pub fn Entry(comptime K: type, comptime V: type) type {
         /// }.bar);
         /// try testing.expectEqualStrings("bar", map.get(&@as(u32, 42)).?.*);
         /// ```
-        pub fn modify(self: *Self, f: fn (*Value) void) *Self {
+        pub fn modify(self: *Self, f: compat.Func(*Value, void)) *Self {
             switch (self.*) {
                 .Occupied => |*occupied| f(occupied.get_value_mut()),
                 else => {},

@@ -7,6 +7,7 @@ const string_cmp = @import("../string_cmp.zig");
 const node = @import("./node.zig");
 pub const config = @import("./config.zig");
 pub const iters = @import("./iter.zig");
+const compat = @import("../compat.zig");
 
 const Allocator = std.mem.Allocator;
 const Order = std.math.Order;
@@ -42,7 +43,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
 
         alloc: Allocator,
         root: ?*Node,
-        cmp: fn (*const T, *const T) Order,
+        cmp: compat.Func2(*const T, *const T, Order),
         cfg: Config,
 
         /// Build a Set with an allocator and ownership config of items.
@@ -84,7 +85,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         ///
         /// # Requires
         /// The comparator `cmp` must be a total order function for type `T`.
-        pub fn with_cmp(alloc: Allocator, cfg: Config, cmp: fn (*const T, *const T) Order) Self {
+        pub fn with_cmp(alloc: Allocator, cfg: Config, cmp: compat.Func2(*const T, *const T, Order)) Self {
             return .{
                 .alloc = alloc,
                 .root = null,

@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 const Con = @import("basis_concept");
 const color = @import("./color.zig");
 const key_value = @import("./llrbmap/key_value.zig");
+const compat = @import("./compat.zig");
 
 const Allocator = std.mem.Allocator;
 const Order = std.math.Order;
@@ -155,7 +156,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             }
         }
 
-        pub fn contains_key(self: ?*const Self, key: *const Key, cmp: fn (*const Key, *const Key) Order) bool {
+        pub fn contains_key(self: ?*const Self, key: *const Key, cmp: compat.Func2(*const Key, *const Key, Order)) bool {
             var node = self;
             while (node) |n| {
                 switch (cmp(key, Self.get_key(&n.item))) {
@@ -167,7 +168,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return false;
         }
 
-        pub fn get(self: ?*const Self, key: *const Key, cmp: fn (*const Key, *const Key) Order) ?*const T {
+        pub fn get(self: ?*const Self, key: *const Key, cmp: compat.Func2(*const Key, *const Key, Order)) ?*const T {
             var node = self;
             while (node) |n| {
                 switch (cmp(key, Self.get_key(&n.item))) {
@@ -234,7 +235,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return h;
         }
 
-        pub fn insert(self: *?*Self, alloc: Allocator, item: T, cmp: fn (*const Key, *const Key) Order) Allocator.Error!?T {
+        pub fn insert(self: *?*Self, alloc: Allocator, item: T, cmp: compat.Func2(*const Key, *const Key, Order)) Allocator.Error!?T {
             if (self.* == null) {
                 self.* = try Self.new(alloc, item, null, null);
                 return null;
@@ -295,7 +296,7 @@ pub fn Node(comptime Derive: fn (type) type, comptime T: type, comptime Key: typ
             return h;
         }
 
-        pub fn delete(self: *?*Self, alloc: Allocator, key: *const Key, cmp: fn (*const Key, *const Key) Order) ?T {
+        pub fn delete(self: *?*Self, alloc: Allocator, key: *const Key, cmp: compat.Func2(*const Key, *const Key, Order)) ?T {
             if (self.* == null)
                 return null;
 
