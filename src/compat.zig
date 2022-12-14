@@ -1,14 +1,12 @@
 const std = @import("std");
 const builtin = @import("builtin");
-pub const basis = @import("basis_concept");
+const basis = @import("basis_concept");
 
-const SemVer = std.SemanticVersion;
-const trait = std.meta.trait;
 const assert = std.debug.assert;
 
 // pub usingnamespace basis;
 /// workaround criteria
-pub const zig091 = SemVer.parse("0.9.1") catch unreachable;
+const zig091 = std.SemanticVersion.parse("0.9.1") catch unreachable;
 /// *this* is older than or equals to zig-0.9.1 (<= 0.9.1).
 pub const older_zig091: bool = builtin.zig_version.order(zig091).compare(.lte);
 /// *this* is newer than zig-0.9.1 (> 0.9.1)
