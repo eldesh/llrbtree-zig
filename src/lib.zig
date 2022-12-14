@@ -53,6 +53,12 @@ pub const llrbmap = @import("./llrbmap/llrbmap.zig");
 /// When values are owned in the container (i.e. the values should be destoyed with an allocator in the container), `Owned` or `OwnedAlloc` should be used.
 pub const ownership = @import("./ownership.zig");
 
+/// Compatibility with Zig 0.9.1
+///
+/// # Details
+/// This module provides utility functions to abstract differences between Zig versions.
+pub const compat = @import("./compat.zig");
+
 test {
     const std = @import("std");
     std.testing.refAllDecls(@This());

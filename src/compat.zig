@@ -12,6 +12,11 @@ pub const older_zig091: bool = builtin.zig_version.order(zig091).compare(.lte);
 /// *this* is newer than zig-0.9.1 (> 0.9.1)
 pub const newer_zig091: bool = builtin.zig_version.order(zig091).compare(.gt);
 
+/// Abstract function type
+///
+/// # Details
+/// For Zig 0.9.1, `Func(A,R)` equals to `fn (A) R`, and
+/// for Zig 0.10.0, it represents `*const fn (A) R`.
 pub fn Func(comptime Arg: type, comptime Result: type) type {
     comptime {
         if (newer_zig091) {
@@ -22,6 +27,11 @@ pub fn Func(comptime Arg: type, comptime Result: type) type {
     }
 }
 
+/// Abstract function type
+///
+/// # Details
+/// For Zig 0.9.1, `Func(A1,A2,R)` equals to `fn (A1,A2) R`, and
+/// for Zig 0.10.0, it represents `*const fn (A1,A2) R`.
 pub fn Func2(comptime Arg1: type, comptime Arg2: type, comptime Result: type) type {
     comptime {
         if (newer_zig091) {

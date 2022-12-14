@@ -47,7 +47,10 @@ pub fn KeyValue(comptime K: type, comptime V: type) type {
 }
 
 /// Construct a `KeyValue` with `key` and `value`.
-/// Type parameters are determined by `key` and `value`.
+///
+/// # Details
+/// Construct a `KeyValue` with `key` and `value`.
+/// Type parameters of `KeyValue` are determined by `key` and `value`.
 pub fn make(key: anytype, value: anytype) KeyValue(@TypeOf(key), @TypeOf(value)) {
     return KeyValue(@TypeOf(key), @TypeOf(value)){ ._key = key, ._value = value };
 }
