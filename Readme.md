@@ -84,16 +84,14 @@ assert(k2.key().* == 9 and mem.eql(u8, k2.value().*, "36"));
 
 ## Support
 
-- zig 0.9.1
-- zigmod r79
-
-NOTICE: When you want to use Zig (> 0.9.1), use should use newer zigmod (> r79) too.
+- zigmod r80 and zig 0.10.0
+- zigmod r79 and zig 0.9.1
 
 
 ## Dependencies
 
-- basis_concept (v1.1)
-- iter
+- basis_concept-zig (v1.3)
+- iter-zig (v0.2)
 
 
 ## Build
@@ -123,7 +121,7 @@ To generate documents:
 zig build doc
 ```
 
-Html documents would be generated under the `./doc` directory.
+Html documents would be generated under the `./docs` directory.
 
 
 ## Execute the example program
@@ -141,14 +139,17 @@ The program is defined in `src/main.zig`.
 
 `llrbset` and `llrbmap` are modules provided from the root of the library.
 Each of these modules provides data structures: the `LLRBTreeSet` as a set of values and `LLRBTreeMap` as a key/value map.
+`ownership` and `compat` are utility modules.
 
 - rbtree-zig (root)
   - llrbset
     - LLRBTreeSet  - A type of set of values
   - llrbmap
     - LLRBTreeMap  - A type of key/value map
+
   - ownership
-    - Ownership
+    - Ownership    - A type of ownership variations
+  - compat         - Compatibility module
 
 
 ## Complexity
