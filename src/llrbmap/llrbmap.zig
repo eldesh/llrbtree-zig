@@ -9,7 +9,7 @@ const compat = @import("../compat.zig");
 pub const config = @import("./config.zig");
 pub const key_value = @import("./key_value.zig");
 pub const entry = @import("./entry.zig");
-pub const iters = @import("./iter.zig");
+pub const iter = @import("./iter.zig");
 
 const Allocator = std.mem.Allocator;
 const Order = std.math.Order;
@@ -87,9 +87,9 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         ///
         /// # Notice
         /// The tree must not be modified while the iterator is alive.
-        pub fn iter(self: *const Self) iters.Iter(Key, Value) {
+        pub fn to_iter(self: *const Self) iter.Iter(Key, Value) {
             Node.check_inv(self.root);
-            return iters.Iter(Key, Value).new(self.root, Node.get_item);
+            return iter.Iter(Key, Value).new(self.root, Node.get_item);
         }
 
         /// Returns an iterator which enumerates all keys of the tree by ascending order.
@@ -99,14 +99,14 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         ///
         /// # Notice
         /// The tree must not be modified while the iterator is alive.
-        pub fn keys(self: *const Self) iters.Keys(Key, Value) {
+        pub fn keys(self: *const Self) iter.Keys(Key, Value) {
             Node.check_inv(self.root);
             const proj = struct {
                 fn key(n: *const Node) *const Key {
                     return Node.get_key(n.get_item());
                 }
             };
-            return iters.Keys(Key, Value).new(self.root, proj.key);
+            return iter.Keys(Key, Value).new(self.root, proj.key);
         }
 
         /// Returns an iterator which enumerates all values of the tree.
@@ -117,14 +117,14 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         ///
         /// # Notice
         /// The tree must not be modified while the iterator is alive.
-        pub fn values(self: *const Self) iters.Values(Key, Value) {
+        pub fn values(self: *const Self) iter.Values(Key, Value) {
             Node.check_inv(self.root);
             const proj = struct {
                 fn value(n: *const Node) *const Value {
                     return Node.get_value(n.get_item());
                 }
             };
-            return iters.Values(Key, Value).new(self.root, proj.value);
+            return iter.Values(Key, Value).new(self.root, proj.value);
         }
 
         /// Insert the `key` and an associated `value` to the tree `self`.
@@ -651,17 +651,17 @@ test "iter" {
         try testing.expectEqual(try tree.insert(4, 4), null);
         try testing.expectEqual(try tree.insert(3, 3), null);
 
-        var iter = tree.iter();
+        var it = tree.to_iter();
         // values are enumerated by asceding order
-        try testing.expectEqual(iter.next().?.*, kv(0, 0));
-        try testing.expectEqual(iter.next().?.*, kv(1, 1));
-        try testing.expectEqual(iter.next().?.*, kv(2, 2));
-        try testing.expectEqual(iter.next().?.*, kv(3, 3));
-        try testing.expectEqual(iter.next().?.*, kv(4, 4));
-        try testing.expectEqual(iter.next().?.*, kv(5, 5));
-        try testing.expectEqual(iter.next(), null);
+        try testing.expectEqual(it.next().?.*, kv(0, 0));
+        try testing.expectEqual(it.next().?.*, kv(1, 1));
+        try testing.expectEqual(it.next().?.*, kv(2, 2));
+        try testing.expectEqual(it.next().?.*, kv(3, 3));
+        try testing.expectEqual(it.next().?.*, kv(4, 4));
+        try testing.expectEqual(it.next().?.*, kv(5, 5));
+        try testing.expectEqual(it.next(), null);
 
-        var iter2 = tree.iter().map_while(struct {
+        var it2 = tree.to_iter().map_while(struct {
             fn pred(v: *const KV(Tree.Key, Tree.Value)) ?i32 {
                 const t = v.toTuple();
                 return if (t[0] * t[1] < 10) t[0] * t[1] else null;
@@ -677,15 +677,15 @@ test "iter" {
                 // std.debug.print("inspect: {}\n", .{v.*});
             }
         }.ins);
-        try testing.expectEqual(@as(i32, 0), iter2.next().?);
-        try testing.expectEqual(@as(i32, 1), iter2.next().?);
-        try testing.expectEqual(@as(i32, 1), iter2.next().?);
-        try testing.expectEqual(@as(i32, 2), iter2.next().?);
-        try testing.expectEqual(@as(i32, 4), iter2.next().?);
-        try testing.expectEqual(@as(i32, 5), iter2.next().?);
-        try testing.expectEqual(@as(i32, 9), iter2.next().?);
-        try testing.expectEqual(@as(i32, 10), iter2.next().?);
-        try testing.expectEqual(@as(?i32, null), iter2.next());
+        try testing.expectEqual(@as(i32, 0), it2.next().?);
+        try testing.expectEqual(@as(i32, 1), it2.next().?);
+        try testing.expectEqual(@as(i32, 1), it2.next().?);
+        try testing.expectEqual(@as(i32, 2), it2.next().?);
+        try testing.expectEqual(@as(i32, 4), it2.next().?);
+        try testing.expectEqual(@as(i32, 5), it2.next().?);
+        try testing.expectEqual(@as(i32, 9), it2.next().?);
+        try testing.expectEqual(@as(i32, 10), it2.next().?);
+        try testing.expectEqual(@as(?i32, null), it2.next());
     }
     {
         var tree = LLRBTreeMap(i32, i32).new(testing.allocator, .{});
@@ -698,9 +698,9 @@ test "iter" {
         while (i <= 4096) : (i += 2)
             try testing.expectEqual(try tree.insert(i, i), null);
 
-        var iter = tree.iter();
+        var it = tree.to_iter();
         var old: LLRBTreeMap(i32, i32).Value = -1;
-        while (iter.next()) |item| {
+        while (it.next()) |item| {
             // std.debug.print("item: {}\n", .{item.*});
             assert(old < item.key().*);
             old = item.key().*;

@@ -34,7 +34,7 @@ fn overview_of_set_features(alloc: mem.Allocator) !void {
     _ = try set.insert(5);
     _ = try set.insert(9);
     // iterators enumerate values in ascending order
-    var items = set.iter();
+    var items = set.to_iter();
     assert(items.next().?.* == 5);
     assert(items.next().?.* == 7);
     assert(items.next().?.* == 9);
@@ -70,7 +70,7 @@ fn overview_of_map_features(alloc: mem.Allocator) !void {
     _ = try map.insert(5, try alloc.dupe(u8, "20"));
     _ = try map.insert(9, try alloc.dupe(u8, "36"));
     // iterators enumerate values in ascending order
-    var kvs = map.iter();
+    var kvs = map.to_iter();
     var k0 = kvs.next().?;
     assert(k0.key().* == 5 and mem.eql(u8, k0.value().*, "20"));
     var k1 = kvs.next().?;

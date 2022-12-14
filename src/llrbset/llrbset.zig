@@ -5,9 +5,10 @@ const Con = @import("basis_concept");
 const color = @import("../color.zig");
 const string_cmp = @import("../string_cmp.zig");
 const node = @import("./node.zig");
-pub const config = @import("./config.zig");
-pub const iters = @import("./iter.zig");
 const compat = @import("../compat.zig");
+
+pub const config = @import("./config.zig");
+pub const iter = @import("./iter.zig");
 
 const Allocator = std.mem.Allocator;
 const Order = std.math.Order;
@@ -114,9 +115,9 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Returns an iterator which enumerates all values of the tree.
         /// The values are enumerated by asceding order.
         /// Also, the tree must not be modified while the iterator is alive.
-        pub fn iter(self: *const Self) iters.Iter(Item) {
+        pub fn to_iter(self: *const Self) iter.Iter(Item) {
             Node.check_inv(self.root);
-            return iters.Iter(Item).new(self.root, Node.get_item);
+            return iter.Iter(Item).new(self.root, Node.get_item);
         }
 
         /// Insert the value `value` to the tree `self`.
@@ -537,17 +538,17 @@ test "values" {
         while (0 <= i) : (i -= 1)
             try testing.expectEqual(try tree.insert(i), null);
 
-        var iter = tree.iter();
-        defer iter.destroy();
+        var it = tree.to_iter();
+        defer it.destroy();
 
         // values are enumerated by asceding order
-        try testing.expectEqual(iter.next().?.*, 0);
-        try testing.expectEqual(iter.next().?.*, 1);
-        try testing.expectEqual(iter.next().?.*, 2);
-        try testing.expectEqual(iter.next().?.*, 3);
-        try testing.expectEqual(iter.next().?.*, 4);
-        try testing.expectEqual(iter.next().?.*, 5);
-        try testing.expectEqual(iter.next(), null);
+        try testing.expectEqual(it.next().?.*, 0);
+        try testing.expectEqual(it.next().?.*, 1);
+        try testing.expectEqual(it.next().?.*, 2);
+        try testing.expectEqual(it.next().?.*, 3);
+        try testing.expectEqual(it.next().?.*, 4);
+        try testing.expectEqual(it.next().?.*, 5);
+        try testing.expectEqual(it.next(), null);
     }
     {
         var tree = LLRBTreeSet(i32).new(alloc, .{});
@@ -560,10 +561,10 @@ test "values" {
         while (i <= 4096) : (i += 2)
             try testing.expectEqual(try tree.insert(i), null);
 
-        var iter = tree.iter();
-        defer iter.destroy();
+        var it = tree.to_iter();
+        defer it.destroy();
         var old: LLRBTreeSet(i32).Item = -1;
-        while (iter.next()) |item| {
+        while (it.next()) |item| {
             // std.debug.print("item: {}\n", .{item.*});
             assert(old < item.*);
             old = item.*;
