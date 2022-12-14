@@ -4,8 +4,8 @@ main: src/lib.zig
 license: BSD-2-Clause
 description: A container data structure implementation using Left Leaning Red-Black tree .
 root_dependencies:
-  - src: git git@github.com:eldesh/basis_concept-zig commit-v1.1
-  - src: git git@github.com:eldesh/iter-zig          commit-b807c9f
+  - src: git git@github.com:eldesh/basis_concept-zig commit-v1.3
+  - src: git git@github.com:eldesh/iter-zig          commit-v0.2
 dependencies:
-  - src: git git@github.com:eldesh/basis_concept-zig commit-v1.1
-  - src: git git@github.com:eldesh/iter-zig          commit-b807c9f
+  - src: git git@github.com:eldesh/basis_concept-zig commit-v1.3
+  - src: git git@github.com:eldesh/iter-zig          commit-v0.2
