@@ -28,7 +28,7 @@ fn overview_of_set_features(alloc: mem.Allocator) !void {
     // To delete a value, use `delete` function.
     // The deleted value is returned from the function.
     assert(set.delete(&@as(u32, 5)).? == 5);
-    // '3' have been deleted already
+    // '5' have been deleted already
     assert(set.delete(&@as(u32, 5)) == null);
 
     _ = try set.insert(5);
