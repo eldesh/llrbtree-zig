@@ -56,8 +56,7 @@ pub fn MakeIter(comptime Derive: fn (type) type, comptime Node: type, comptime V
         }
 
         pub fn next(self: *Self) ?Item {
-            while (!self.stack.is_empty()) {
-                const n = self.stack.force_peek_ref();
+            while (self.stack.peek_ref() catch null) |n| {
                 const now = n.*[1];
                 n.*[1] = self.trav.next(n.*[1]);
                 switch (now) {
