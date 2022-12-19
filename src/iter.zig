@@ -3,26 +3,11 @@ const Con = @import("basis_concept");
 const iter = @import("iter-zig");
 const static_stack = @import("./static_stack.zig");
 const compat = @import("./compat.zig");
+const traverse = @import("./traverse.zig");
 
 const Tuple = std.meta.Tuple;
 const StaticStack = static_stack.StaticStack;
-
-// Inner states of Iter of LLRBTree for depth first iteration
-const State = enum(u8) {
-    Left = 0,
-    Value = 1,
-    Right = 2,
-    Pop = 3,
-    // Updates the current state to the next and returns old state.
-    //
-    // Updates are cycled in order:
-    // Left -> Value -> Right -> Pop -> Left ...
-    fn next(self: *@This()) @This() {
-        const old = self.*;
-        self.* = @intToEnum(@This(), (@enumToInt(self.*) + 1) % 4);
-        return old;
-    }
-};
+const Op = traverse.Op;
 
 /// An iterator enumerates all values of a `LLRBTreeSet` by asceding order.
 ///
@@ -49,7 +34,7 @@ pub fn MakeIter(comptime Derive: fn (type) type, comptime Node: type, comptime V
     //   '.rbtree-zig.iter.MakeIter(DeriveIterator, Node...)
     // depends on itself
     // ```
-    const Stack: type = StaticStack(Tuple(&.{ *const Node, State }), Node.MaxPathLength);
+    const Stack: type = StaticStack(Tuple(&.{ *const Node, Op }), Node.MaxPathLength);
 
     // type of projection function value from a node
     const Proj = compat.Func(*const Node, V);
@@ -61,35 +46,38 @@ pub fn MakeIter(comptime Derive: fn (type) type, comptime Node: type, comptime V
         root: ?*const Node,
         stack: Stack,
         proj: Proj,
+        trav: traverse.Traverse,
 
-        pub fn new(root: ?*const Node, proj: Proj) Self {
+        pub fn new(root: ?*const Node, proj: Proj, trav: traverse.Traverse) Self {
             var stack = Stack.new();
             if (root) |n|
-                stack.force_push(.{ n, State.Left });
-            return .{ .root = root, .stack = stack, .proj = proj };
+                stack.force_push(.{ n, trav.get(0) });
+            return .{ .root = root, .stack = stack, .proj = proj, .trav = trav };
         }
 
         pub fn next(self: *Self) ?Item {
             while (!self.stack.is_empty()) {
                 const n = self.stack.force_peek_ref();
-                switch (n.*[1].next()) {
-                    State.Left => {
+                const now = n.*[1];
+                n.*[1] = self.trav.next(n.*[1]);
+                switch (now) {
+                    Op.Left => {
                         if (n.*[0].lnode) |lnode| {
                             // std.debug.print("L:{}\n", .{self.st});
-                            self.stack.force_push(.{ lnode, State.Left });
+                            self.stack.force_push(.{ lnode, self.trav.get(0) });
                         }
                     },
-                    State.Value => {
+                    Op.Value => {
                         // std.debug.print("V:{}\n", .{n.value});
                         return self.proj(n.*[0]);
                     },
-                    State.Right => {
+                    Op.Right => {
                         if (n.*[0].rnode) |rnode| {
                             // std.debug.print("R:{}\n", .{self.st});
-                            self.stack.force_push(.{ rnode, State.Left });
+                            self.stack.force_push(.{ rnode, self.trav.get(0) });
                         }
                     },
-                    State.Pop => {
+                    Op.Pop => {
                         // std.debug.print("P:{}\n", .{self.st});
                         self.stack.force_pop();
                     },

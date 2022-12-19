@@ -2,6 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Con = @import("basis_concept");
 
+const traverse = @import("../traverse.zig");
 const color = @import("../color.zig");
 const string_cmp = @import("../string_cmp.zig");
 const node = @import("./node.zig");
@@ -117,7 +118,7 @@ pub fn LLRBTreeSet(comptime T: type) type {
         /// Also, the tree must not be modified while the iterator is alive.
         pub fn to_iter(self: *const Self) iter.Iter(Item) {
             Node.check_inv(self.root);
-            return iter.Iter(Item).new(self.root, Node.get_item);
+            return iter.Iter(Item).new(self.root, Node.get_item, traverse.Inorder);
         }
 
         /// Insert the value `value` to the tree `self`.

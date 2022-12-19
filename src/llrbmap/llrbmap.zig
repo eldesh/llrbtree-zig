@@ -1,6 +1,8 @@
 const std = @import("std");
 const iter_zig = @import("iter-zig");
 const Con = @import("basis_concept");
+
+const traverse = @import("../traverse.zig");
 const color = @import("../color.zig");
 const string_cmp = @import("../string_cmp.zig");
 const node = @import("./node.zig");
@@ -89,7 +91,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
         /// The tree must not be modified while the iterator is alive.
         pub fn to_iter(self: *const Self) iter.Iter(Key, Value) {
             Node.check_inv(self.root);
-            return iter.Iter(Key, Value).new(self.root, Node.get_item);
+            return iter.Iter(Key, Value).new(self.root, Node.get_item, traverse.Inorder);
         }
 
         /// Returns an iterator which enumerates all keys of the tree by ascending order.
@@ -106,7 +108,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                     return Node.get_key(n.get_item());
                 }
             };
-            return iter.Keys(Key, Value).new(self.root, proj.key);
+            return iter.Keys(Key, Value).new(self.root, proj.key, traverse.Inorder);
         }
 
         /// Returns an iterator which enumerates all values of the tree.
@@ -124,7 +126,7 @@ pub fn LLRBTreeMap(comptime K: type, comptime V: type) type {
                     return Node.get_value(n.get_item());
                 }
             };
-            return iter.Values(Key, Value).new(self.root, proj.value);
+            return iter.Values(Key, Value).new(self.root, proj.value, traverse.Inorder);
         }
 
         /// Insert the `key` and an associated `value` to the tree `self`.
