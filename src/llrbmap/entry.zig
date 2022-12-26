@@ -128,12 +128,9 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
             defer self.inserted = true;
 
             // pop the pointer to the vacant entry
-            var n = pop: {
-                const top = self.stack.force_peek();
-                self.stack.force_pop();
-                assert(top.* == null); // vacant
-                break :pop top;
-            };
+            var n = self.stack.force_pop();
+            assert(n.* == null); // vacant
+
             // insert a value to the leaf
             n.* = new: {
                 const kv = key_value.make(self.key, value);
@@ -143,8 +140,8 @@ pub fn VacantEntry(comptime K: type, comptime V: type) type {
             // hold the pointer to the inserted k/v
             const kvp = n.*.?.get_item_mut();
             // fixup node up to the root from the leaf
-            while (!self.stack.is_empty()) : (self.stack.force_pop()) {
-                n = self.stack.force_peek();
+            while (!self.stack.is_empty()) {
+                n = self.stack.force_pop();
                 n.* = n.*.?.fixup();
             }
             // update the color of the root node to black

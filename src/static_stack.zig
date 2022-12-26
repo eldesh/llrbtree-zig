@@ -45,10 +45,10 @@ pub fn StaticStack(comptime T: type, comptime N: comptime_int) type {
             return &self.stack[self.top - 1];
         }
 
-        pub fn pop(self: *Self) Error!void {
-            if (self.is_empty())
-                return Error.StackEmpty;
+        pub fn pop(self: *Self) Error!T {
+            const e = try self.peek();
             self.top -= 1;
+            return e;
         }
 
         pub fn force_push(self: *Self, value: T) void {
@@ -63,8 +63,8 @@ pub fn StaticStack(comptime T: type, comptime N: comptime_int) type {
             return self.peek_ref() catch unreachable;
         }
 
-        pub fn force_pop(self: *Self) void {
-            self.pop() catch unreachable;
+        pub fn force_pop(self: *Self) T {
+            return self.pop() catch unreachable;
         }
     };
 }

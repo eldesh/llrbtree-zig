@@ -56,30 +56,28 @@ pub fn MakeIter(comptime Derive: fn (type) type, comptime Node: type, comptime V
         }
 
         pub fn next(self: *Self) ?Item {
-            while (self.stack.peek_ref() catch null) |n| {
-                const now = n.*[1];
-                n.*[1] = self.trav.next(n.*[1]);
+            while (self.stack.pop() catch null) |n| {
+                const now = n[1];
+                if (now != Op.Pop)
+                    self.stack.force_push(.{ n[0], self.trav.next(now) });
                 switch (now) {
                     Op.Left => {
-                        if (n.*[0].lnode) |lnode| {
+                        if (n[0].lnode) |lnode| {
                             // std.debug.print("L:{}\n", .{self.st});
                             self.stack.force_push(.{ lnode, self.trav.get(0) });
                         }
                     },
                     Op.Value => {
                         // std.debug.print("V:{}\n", .{n.value});
-                        return self.proj(n.*[0]);
+                        return self.proj(n[0]);
                     },
                     Op.Right => {
-                        if (n.*[0].rnode) |rnode| {
+                        if (n[0].rnode) |rnode| {
                             // std.debug.print("R:{}\n", .{self.st});
                             self.stack.force_push(.{ rnode, self.trav.get(0) });
                         }
                     },
-                    Op.Pop => {
-                        // std.debug.print("P:{}\n", .{self.st});
-                        self.stack.force_pop();
-                    },
+                    Op.Pop => {},
                 }
             }
             return null;
