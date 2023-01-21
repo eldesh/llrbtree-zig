@@ -1,7 +1,7 @@
 # LLRBTree for Zig: Set and Map container
 
 This library provides kinds of container data structures: set of values and key/value map.
-These containers are implemented with the Left Leaning Red-Black trees that is a BST (Balanced Binary Tree) algorithm.
+These containers are implemented with the [Left Leaning Red-Black trees][^Sedgewick2008] that is a BST (Balanced Binary Tree) algorithm.
 
 
 ## Overview of Set of values
@@ -160,4 +160,8 @@ Basic operations provided by `LLRBTreeSet` and `LLRBTreeMap` are completed in _O
   |LLRBTreeSet|O(log(n))|O(log(n))|O(log(n))|
   |LLRBTreeMap|O(log(n))|O(log(n))|O(log(n))|
 
+
+# Cite
+
+[^Sedgewick2008]: Robert Sedgewick, Left-leaning Red-Black Trees, 2008 https://sedgewick.io/wp-content/themes/sedgewick/papers/2008LLRB.pdf
 
