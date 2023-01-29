@@ -6,12 +6,12 @@ pub fn build(b: *std.build.Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const lib = b.addStaticLibrary("rbtree-zig", "src/lib.zig");
+    const lib = b.addStaticLibrary("llrbtree-zig", "src/lib.zig");
     lib.setBuildMode(mode);
     deps.addAllTo(lib);
     lib.install();
 
-    const exe = b.addExecutable("rbtree-example", "src/main.zig");
+    const exe = b.addExecutable("llrbtree-example", "src/main.zig");
     exe.setBuildMode(mode);
     deps.addAllTo(exe);
     exe.install();

@@ -1,6 +1,6 @@
-/// An example program use rbtree-zig package.
+/// An example program use llrbtree-zig package.
 const std = @import("std");
-const rbtree = @import("rbtree-zig");
+const llrbtree = @import("llrbtree-zig");
 
 const fmt = std.fmt;
 const mem = std.mem;
@@ -11,7 +11,7 @@ const testing = std.testing;
 
 /// Overview of Set of values
 fn overview_of_set_features(alloc: mem.Allocator) !void {
-    var set = rbtree.llrbset.LLRBTreeSet(u32).new(alloc, .{});
+    var set = llrbtree.llrbset.LLRBTreeSet(u32).new(alloc, .{});
     defer set.destroy();
     // For adding a value, use `insert` function.
     // The old value would be returned from the function if exists already.
@@ -42,7 +42,7 @@ fn overview_of_set_features(alloc: mem.Allocator) !void {
 
 /// Overview of key/value Map
 fn overview_of_map_features(alloc: mem.Allocator) !void {
-    var map = rbtree.llrbmap.LLRBTreeMap(u32, []u8).new(alloc, .{});
+    var map = llrbtree.llrbmap.LLRBTreeMap(u32, []u8).new(alloc, .{});
     defer map.destroy();
     // For adding a key/value pair, use `insert` function.
     // The old value would be returned from the function if exists.

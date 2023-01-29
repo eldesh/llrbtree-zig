@@ -1,5 +1,5 @@
 id: lu1ckabhn47tfk105immoona1s7x9wq6lz7z447tql39ekms
-name: rbtree-zig
+name: llrbtree-zig
 main: src/lib.zig
 license: BSD-2-Clause
 description: A container data structure implementation using Left Leaning Red-Black tree .
