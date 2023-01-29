@@ -156,10 +156,10 @@ Each of these modules provides data structures: the `LLRBTreeSet` as a set of va
 
 Basic operations provided by `LLRBTreeSet` and `LLRBTreeMap` are completed in _O(log(n))_ time for _n_ elements.
 
-  |           |   get(i)|insert(i)|delete(i)|
-  |LLRBTreeSet|O(log(n))|O(log(n))|O(log(n))|
-  |LLRBTreeMap|O(log(n))|O(log(n))|O(log(n))|
-
+  | type        | get(i)    | insert(i) | delete(i) |
+  | ----------- | --------- | --------- | --------- |
+  | LLRBTreeSet | O(log(n)) | O(log(n)) | O(log(n)) |
+  | LLRBTreeMap | O(log(n)) | O(log(n)) | O(log(n)) |
 
 # Cite
 
